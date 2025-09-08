@@ -1,4 +1,4 @@
-import { Parcela } from '@/types';
+import { Parcela } from '../types';
 
 // ============================================
 // 🏠 BANCO DE DADOS - RENATO
