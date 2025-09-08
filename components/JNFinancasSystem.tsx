@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save, Printer } from 'lucide-react';
 
+// Para usar em produção, instale: npm install jspdf
+// import jsPDF from 'jspdf';
+
 // Tipos (simulando as importações)
 interface Parcela {
   parcela: number;
@@ -563,44 +566,290 @@ const JNFinancasSystem: React.FC = () => {
     receiptWindow.document.close();
   };
 
+  // ============================================
+  // 📄 GERAR PDF REAL - USANDO jsPDF
+  // ============================================
   const downloadReceiptPDF = async () => {
     if (!selectedParcela) return;
 
-    // Simulação de download - em produção você usaria uma biblioteca como jsPDF
-    const element = document.createElement('a');
-    const imovelInfo = imoveisInfo[activeTab];
-    const hoje = new Date().toISOString().split('T')[0];
-    
-    const textContent = `
-RECIBO DE PAGAMENTO
-${imovelInfo.condominio}
-${imovelInfo.imovel} - ${imovelInfo.bloco}
+    try {
+      // Simulação de jsPDF - em produção, descomente as linhas abaixo
+      // Para usar, instale: npm install jspdf
+      
+      /*
+      const { jsPDF } = require('jspdf');
+      const doc = new jsPDF();
+      
+      const imovelInfo = imoveisInfo[activeTab];
+      const hoje = new Date().toLocaleDateString('pt-BR');
+      
+      // Configurações
+      const pageWidth = doc.internal.pageSize.width;
+      const marginLeft = 20;
+      const marginRight = 20;
+      const contentWidth = pageWidth - marginLeft - marginRight;
+      let currentY = 20;
+      
+      // Título principal
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      const title = 'RECIBO DE PAGAMENTO';
+      const titleWidth = doc.getTextWidth(title);
+      doc.text(title, (pageWidth - titleWidth) / 2, currentY);
+      currentY += 15;
+      
+      // Subtítulo
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      const subtitle = `${imovelInfo.condominio}`;
+      const subtitleWidth = doc.getTextWidth(subtitle);
+      doc.text(subtitle, (pageWidth - subtitleWidth) / 2, currentY);
+      currentY += 10;
+      
+      const subtitle2 = `${imovelInfo.imovel} - ${imovelInfo.bloco}`;
+      const subtitle2Width = doc.getTextWidth(subtitle2);
+      doc.text(subtitle2, (pageWidth - subtitle2Width) / 2, currentY);
+      currentY += 25;
+      
+      // Linha separadora
+      doc.setLineWidth(0.5);
+      doc.line(marginLeft, currentY, pageWidth - marginRight, currentY);
+      currentY += 15;
+      
+      // Função para adicionar seção
+      const addSection = (title: string, items: Array<{label: string, value: string}>) => {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, marginLeft, currentY);
+        currentY += 10;
+        
+        doc.setFont('helvetica', 'normal');
+        items.forEach(item => {
+          doc.text(`${item.label}:`, marginLeft + 5, currentY);
+          doc.text(item.value, marginLeft + 80, currentY);
+          currentY += 7;
+        });
+        currentY += 5;
+      };
+      
+      // Seção 1: Informações do Imóvel
+      addSection('INFORMAÇÕES DO IMÓVEL', [
+        { label: 'Condomínio', value: imovelInfo.condominio },
+        { label: 'Apartamento', value: imovelInfo.imovel },
+        { label: 'Bloco', value: imovelInfo.bloco }
+      ]);
+      
+      // Seção 2: Dados do Pagamento
+      addSection('DADOS DO PAGAMENTO', [
+        { label: 'Recebedor', value: imovelInfo.recebedor.nome },
+        { label: 'CPF Recebedor', value: imovelInfo.recebedor.cpf },
+        { label: 'Pagador', value: imovelInfo.pagador.nome },
+        { label: 'CPF Pagador', value: imovelInfo.pagador.cpf }
+      ]);
+      
+      // Seção 3: Detalhes da Parcela
+      addSection('DETALHES DA PARCELA', [
+        { label: 'Parcela', value: `${selectedParcela.parcela} de ${imovelInfo.totalParcelas}` },
+        { label: 'Data Vencimento', value: formatDate(selectedParcela.dataVencimento) },
+        { label: 'Data Envio Boleto', value: formatDate(selectedParcela.dataEnvioBoleto) },
+        { label: 'Situação', value: selectedParcela.situacao }
+      ]);
+      
+      // Seção 4: Valores
+      addSection('VALORES', [
+        { label: 'Parcela sem Juros', value: formatCurrency(selectedParcela.parcelaSemJuros) },
+        { label: 'Juros Poupança', value: formatPercentage(selectedParcela.jurosPoupanca) },
+        { label: 'Juros Total', value: formatPercentage(selectedParcela.jurosTotal) },
+        { label: 'Valor dos Juros', value: formatCurrency(selectedParcela.jurosValor) }
+      ]);
+      
+      // Valor Total em destaque
+      currentY += 10;
+      doc.setFillColor(232, 245, 232);
+      doc.rect(marginLeft, currentY - 5, contentWidth, 20, 'F');
+      doc.setDrawColor(40, 167, 69);
+      doc.setLineWidth(1);
+      doc.rect(marginLeft, currentY - 5, contentWidth, 20);
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 167, 69);
+      const totalText = 'VALOR TOTAL DA PARCELA';
+      const totalTextWidth = doc.getTextWidth(totalText);
+      doc.text(totalText, (pageWidth - totalTextWidth) / 2, currentY + 5);
+      
+      doc.setFontSize(18);
+      const totalValue = formatCurrency(selectedParcela.parcelaComJuros);
+      const totalValueWidth = doc.getTextWidth(totalValue);
+      doc.text(totalValue, (pageWidth - totalValueWidth) / 2, currentY + 12);
+      currentY += 30;
+      
+      // Valor Pago (se houver)
+      if (selectedParcela.valorPago) {
+        doc.setFillColor(232, 245, 232);
+        doc.rect(marginLeft, currentY - 5, contentWidth, 15, 'F');
+        doc.setDrawColor(40, 167, 69);
+        doc.rect(marginLeft, currentY - 5, contentWidth, 15);
+        
+        doc.setFontSize(12);
+        const paidText = `VALOR PAGO: ${formatCurrency(selectedParcela.valorPago)}`;
+        const paidTextWidth = doc.getTextWidth(paidText);
+        doc.text(paidText, (pageWidth - paidTextWidth) / 2, currentY + 5);
+        currentY += 25;
+      }
+      
+      // Assinaturas
+      currentY += 20;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      
+      // Linha para assinatura do recebedor
+      doc.line(marginLeft + 20, currentY, marginLeft + 80, currentY);
+      doc.text('Recebedor', marginLeft + 35, currentY + 7);
+      doc.text(imovelInfo.recebedor.nome, marginLeft + 20, currentY + 14);
+      
+      // Linha para assinatura do pagador
+      doc.line(pageWidth - marginRight - 80, currentY, pageWidth - marginRight - 20, currentY);
+      doc.text('Pagador', pageWidth - marginRight - 65, currentY + 7);
+      doc.text(imovelInfo.pagador.nome, pageWidth - marginRight - 80, currentY + 14);
+      
+      // Rodapé
+      currentY = doc.internal.pageSize.height - 30;
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      const footerText1 = 'Recibo gerado automaticamente pelo Sistema JN Finanças';
+      const footerText1Width = doc.getTextWidth(footerText1);
+      doc.text(footerText1, (pageWidth - footerText1Width) / 2, currentY);
+      
+      const footerText2 = `Data de emissão: ${hoje}`;
+      const footerText2Width = doc.getTextWidth(footerText2);
+      doc.text(footerText2, (pageWidth - footerText2Width) / 2, currentY + 7);
+      
+      const footerText3 = 'Este documento possui validade legal para comprovação de pagamento';
+      const footerText3Width = doc.getTextWidth(footerText3);
+      doc.text(footerText3, (pageWidth - footerText3Width) / 2, currentY + 14);
+      
+      // Salvar o PDF
+      const fileName = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
+      doc.save(fileName);
+      */
 
-DADOS DO PAGAMENTO
-Recebedor: ${imovelInfo.recebedor.nome}
-CPF: ${imovelInfo.recebedor.cpf}
-Pagador: ${imovelInfo.pagador.nome}
+      // SIMULAÇÃO para demonstração (remover em produção)
+      const simulatePDF = () => {
+        const imovelInfo = imoveisInfo[activeTab];
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        
+        // Criando um PDF simulado como blob
+        const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
 
-DETALHES DA PARCELA
-Parcela: ${selectedParcela.parcela} de ${imovelInfo.totalParcelas}
-Data de Vencimento: ${formatDate(selectedParcela.dataVencimento)}
-Situação: ${selectedParcela.situacao}
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
 
-VALORES
-Parcela sem Juros: ${formatCurrency(selectedParcela.parcelaSemJuros)}
-Valor dos Juros: ${formatCurrency(selectedParcela.jurosValor)}
-VALOR TOTAL: ${formatCurrency(selectedParcela.parcelaComJuros)}
-${selectedParcela.valorPago ? `VALOR PAGO: ${formatCurrency(selectedParcela.valorPago)}` : ''}
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
 
-Emitido em: ${hoje}
-    `;
+4 0 obj
+<<
+/Length 500
+>>
+stream
+BT
+/F1 16 Tf
+50 750 Td
+(RECIBO DE PAGAMENTO) Tj
+0 -30 Td
+/F1 12 Tf
+(${imovelInfo.condominio}) Tj
+0 -20 Td
+(${imovelInfo.imovel} - ${imovelInfo.bloco}) Tj
+0 -40 Td
+(Parcela: ${selectedParcela.parcela} de ${imovelInfo.totalParcelas}) Tj
+0 -20 Td
+(Vencimento: ${formatDate(selectedParcela.dataVencimento)}) Tj
+0 -20 Td
+(Situacao: ${selectedParcela.situacao}) Tj
+0 -30 Td
+(Valor sem Juros: ${formatCurrency(selectedParcela.parcelaSemJuros)}) Tj
+0 -20 Td
+(Valor dos Juros: ${formatCurrency(selectedParcela.jurosValor)}) Tj
+0 -20 Td
+(VALOR TOTAL: ${formatCurrency(selectedParcela.parcelaComJuros)}) Tj
+${selectedParcela.valorPago ? `0 -30 Td\n(VALOR PAGO: ${formatCurrency(selectedParcela.valorPago)}) Tj` : ''}
+0 -60 Td
+(Recebedor: ${imovelInfo.recebedor.nome}) Tj
+0 -20 Td
+(Pagador: ${imovelInfo.pagador.nome}) Tj
+0 -40 Td
+(Emitido em: ${hoje}) Tj
+ET
+endstream
+endobj
 
-    const file = new Blob([textContent], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000230 00000 n 
+0000000780 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+850
+%%EOF`;
+
+        const blob = new Blob([pdfContent], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+
+      simulatePDF();
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF. Tente novamente.');
+    }
   };
 
   if (loading) {
@@ -951,6 +1200,13 @@ Emitido em: ${hoje}
                 >
                   Cancelar
                 </button>
+              </div>
+
+              {/* Instruções para PDF */}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>📄 Para PDF real:</strong> Instale jsPDF com: <code className="bg-blue-200 px-1 rounded">npm install jspdf</code> e descomente o código da função downloadReceiptPDF
+                </p>
               </div>
             </div>
           </div>
