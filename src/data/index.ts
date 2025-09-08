@@ -110,3 +110,8 @@ export const salvarTodasAlteracoes = async () => {
 // Exportações principais
 export * from './ively-database';
 export * from './renato-database';
+
+// ================================
+// 📁 src/data/ively-database.ts
+// ================================
+import { Parcela } from '../types';
