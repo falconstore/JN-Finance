@@ -245,12 +245,12 @@ const JNFinancasSystem: React.FC = () => {
     
     if (isEditing) {
       return (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           {field === 'situacao' ? (
             <select
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              className="px-2 py-1 border rounded text-sm"
+              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 min-w-[100px]"
               autoFocus
             >
               <option value="Pago">Pago</option>
@@ -266,7 +266,11 @@ const JNFinancasSystem: React.FC = () => {
                 console.log('📝 Digitando:', e.target.value);
                 setEditValue(e.target.value);
               }}
-              className="px-2 py-1 border rounded text-sm min-w-[100px]"
+              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              style={{ 
+                minWidth: field === 'jurosPoupanca' ? '100px' : 
+                          field === 'dataEnvioBoleto' || field === 'dataVencimento' ? '130px' : '100px' 
+              }}
               autoFocus
               placeholder={field === 'jurosPoupanca' ? 'Ex: 0.6000' : ''}
               onKeyDown={(e) => {
@@ -286,7 +290,7 @@ const JNFinancasSystem: React.FC = () => {
               console.log('✅ Botão salvar clicado');
               saveEdit();
             }}
-            className="p-1 text-green-600 hover:bg-green-100 rounded"
+            className="p-1 text-green-600 hover:bg-green-100 rounded flex-shrink-0"
             title="Salvar"
           >
             <Check size={14} />
@@ -296,7 +300,7 @@ const JNFinancasSystem: React.FC = () => {
               console.log('❌ Botão cancelar clicado');
               cancelEditing();
             }}
-            className="p-1 text-red-600 hover:bg-red-100 rounded"
+            className="p-1 text-red-600 hover:bg-red-100 rounded flex-shrink-0"
             title="Cancelar"
           >
             <X size={14} />
@@ -311,7 +315,7 @@ const JNFinancasSystem: React.FC = () => {
           return <span className="text-orange-600 font-medium">{formatPercentage(value)}</span>;
         case 'dataEnvioBoleto':
         case 'dataVencimento':
-          return formatDate(value);
+          return <span className="flex items-center"><Calendar size={14} className="mr-1 text-gray-400" />{formatDate(value)}</span>;
         case 'situacao':
           return (
             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(value)}`}>
@@ -325,13 +329,15 @@ const JNFinancasSystem: React.FC = () => {
 
     return (
       <div className="flex items-center justify-between group">
-        {displayValue}
+        <div className="min-w-0 flex-1">
+          {displayValue}
+        </div>
         <button
           onClick={() => {
             console.log('🖊️ Botão editar clicado');
             startEditing(rowIndex, field, value);
           }}
-          className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:bg-blue-100 rounded transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:bg-blue-100 rounded transition-opacity flex-shrink-0 ml-2"
           title="Editar"
         >
           <Edit2 size={12} />
