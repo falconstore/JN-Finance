@@ -204,6 +204,8 @@ const JNFinancasSystem: React.FC = () => {
   const saveEdit = () => {
     if (!editingCell) return;
     
+    console.log('Salvando edição:', editingCell, 'valor:', editValue);
+    
     const { rowIndex, field } = editingCell;
     const newData = JSON.parse(JSON.stringify(data)); // Deep clone para garantir re-render
     
@@ -212,7 +214,12 @@ const JNFinancasSystem: React.FC = () => {
     
     if (field === 'jurosPoupanca') {
       // Converter de percentual para decimal
-      processedValue = parseFloat(editValue) / 100;
+      const numValue = parseFloat(editValue);
+      if (isNaN(numValue)) {
+        alert('Por favor, digite um número válido para Juros Poupança');
+        return;
+      }
+      processedValue = numValue / 100;
       
       console.log(`Alterando Juros Poupança da parcela ${rowIndex + 1} de ${newData[activeTab][rowIndex][field]} para ${processedValue}`);
       
@@ -224,7 +231,7 @@ const JNFinancasSystem: React.FC = () => {
       recalculateFromParcela(newData, activeTab, rowIndex);
       
     } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
-      // Validar formato de data
+      // Para datas, manter como string
       processedValue = editValue;
       newData[activeTab][rowIndex][field] = processedValue;
     } else {
