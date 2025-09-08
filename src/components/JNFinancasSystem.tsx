@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save } from 'lucide-react';
 import { Parcela, ImovelData, EditingCell, TabType } from '@/types';
+// IMPORTANTE: Importar os dados completos dos arquivos de dados
+import { database, imoveisInfo, getEstatisticas } from '@/data';
 
 const JNFinancasSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('ively');
@@ -14,580 +16,348 @@ const JNFinancasSystem: React.FC = () => {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState('');
 
-
-    renato: [
-      {
-        parcela: 1,
-        parcelaSemJuros: 1618.05,
-        parcelaComJuros: 1632.15,
-        valorPago: 1632.15,
-        jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715,
-        jurosValor: 14.10,
-        dataEnvioBoleto: '2019-08-15',
-        dataVencimento: '2019-08-22',
-        situacao: 'Pago'
-      },
-      {
-        parcela: 2,
-        parcelaSemJuros: 1632.15,
-        parcelaComJuros: 1646.38,
-        valorPago: 1646.38,
-        jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715,
-        jurosValor: 14.22,
-        dataEnvioBoleto: '2019-09-17',
-        dataVencimento: '2019-09-24',
-        situacao: 'Pago'
-      },
-      {
-        parcela: 3,
-        parcelaSemJuros: 1646.38,
-        parcelaComJuros: 1660.73,
-        valorPago: null,
-        jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715,
-        jurosValor: 14.35,
-        dataEnvioBoleto: '2019-10-17',
-        dataVencimento: '2019-10-24',
-        situacao: 'À Vencer'
-      },
-      {
-        parcela: 4,
-        parcelaSemJuros: 1660.73,
-        parcelaComJuros: 1675.21,
-        valorPago: null,
-        jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715,
-        jurosValor: 14.48,
-        dataEnvioBoleto: '2019-11-17',
-        dataVencimento: '2019-11-24',
-        situacao: 'Vencida'
-      }
-    ]
-  };
-
+  // ============================================
+  // 🔄 CARREGAMENTO DOS DADOS COMPLETOS
+  // ============================================
   useEffect(() => {
-    console.log('🚀 Sistema JN Finanças iniciando...');
-    const timer = setTimeout(() => {
-      setData(sampleData);
+    console.log('🚀 Carregando dados completos da Ively e Renato...');
+    
+    try {
+      // Carregar dados completos dos arquivos
+      console.log('📊 Dados Ively:', database.ively.length, 'parcelas');
+      console.log('📊 Dados Renato:', database.renato.length, 'parcelas');
+      
+      setData({
+        ively: database.ively,  // 144 parcelas completas
+        renato: database.renato // 144 parcelas completas
+      });
+      
       setLoading(false);
       console.log('✅ Dados carregados com sucesso!');
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+      console.log('📈 Estatísticas Ively:', getEstatisticas('ively'));
+      console.log('📈 Estatísticas Renato:', getEstatisticas('renato'));
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados:', error);
+      setLoading(false);
+    }
   }, []);
 
-  // Função para recalcular parcelas em cascata
-  const recalculateFromParcela = (newData: ImovelData, tabName: TabType, startIndex: number) => {
-    console.log(`🔄 Recalculando a partir da parcela ${startIndex + 1}...`);
-    const parcelas = newData[tabName];
-    
-    for (let i = startIndex; i < parcelas.length; i++) {
-      const currentParcela = parcelas[i];
-      
-      // Valor sem juros = valor com juros da parcela anterior
-      if (i > 0) {
-        currentParcela.parcelaSemJuros = parcelas[i - 1].parcelaComJuros;
-      }
-      
-      // Juros total = 0.5% fixo + juros da poupança
-      const juroFixo = 0.005;
-      currentParcela.jurosTotal = juroFixo + (currentParcela.jurosPoupanca || 0);
-      
-      // Valor dos juros em reais
-      currentParcela.jurosValor = currentParcela.parcelaSemJuros * currentParcela.jurosTotal;
-      
-      // Parcela com juros = valor sem juros + valor dos juros
-      currentParcela.parcelaComJuros = currentParcela.parcelaSemJuros + currentParcela.jurosValor;
-      
-      console.log(`  Parcela ${currentParcela.parcela}: ${formatCurrency(currentParcela.parcelaComJuros)}`);
-    }
-  };
-
-  // Iniciar edição de célula
-  const startEditing = (rowIndex: number, field: keyof Parcela, currentValue: any) => {
-    console.log(`✏️ Editando: Parcela ${rowIndex + 1}, Campo: ${field}`);
+  // ============================================
+  // 📝 FUNÇÕES DE EDIÇÃO
+  // ============================================
+  const startEditing = (rowIndex: number, field: keyof Parcela, currentValue?: any) => {
     setEditingCell({ rowIndex, field });
-    
-    // Formatar valor baseado no tipo
-    if (field === 'jurosPoupanca') {
-      setEditValue(currentValue ? (currentValue * 100).toFixed(4) : '0.0000');
-    } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
-      setEditValue(currentValue || '');
-    } else {
-      setEditValue(currentValue?.toString() || '');
-    }
+    setEditValue(currentValue?.toString() || '');
   };
 
-  // Cancelar edição
-  const cancelEditing = () => {
-    console.log('❌ Edição cancelada');
-    setEditingCell(null);
-    setEditValue('');
-  };
-
-  // Salvar edição
   const saveEdit = () => {
     if (!editingCell) return;
-    
+
     const { rowIndex, field } = editingCell;
-    console.log(`💾 Salvando: Parcela ${rowIndex + 1}, ${field} = "${editValue}"`);
+    const updatedData = { ...data };
+    const parcelas = [...updatedData[activeTab]];
     
-    // Criar cópia profunda dos dados
-    const newData = JSON.parse(JSON.stringify(data)) as ImovelData;
+    // Converter valor conforme o tipo do campo
+    let newValue: any = editValue;
     
-    let processedValue: any = editValue;
-    
-    // Processar valor baseado no tipo de campo
-    if (field === 'jurosPoupanca') {
-      const numValue = parseFloat(editValue);
-      if (isNaN(numValue)) {
-        alert('Por favor, digite um valor numérico válido para Juros Poupança');
-        return;
-      }
-      processedValue = numValue / 100; // Converter % para decimal
-      newData[activeTab][rowIndex][field] = processedValue;
-      
-      // Recalcular todas as parcelas seguintes
-      recalculateFromParcela(newData, activeTab, rowIndex);
-      
-    } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
-      newData[activeTab][rowIndex][field] = processedValue;
-    } else {
-      newData[activeTab][rowIndex][field] = processedValue;
+    if (field === 'jurosPoupanca' || field === 'jurosTotal' || field === 'jurosValor' || 
+        field === 'parcelaSemJuros' || field === 'parcelaComJuros' || field === 'valorPago') {
+      newValue = parseFloat(editValue) || 0;
     }
     
-    setData(newData);
+    parcelas[rowIndex] = {
+      ...parcelas[rowIndex],
+      [field]: newValue
+    };
+    
+    // Se alterou juros poupança, recalcular juros total e valor dos juros
+    if (field === 'jurosPoupanca') {
+      const parcela = parcelas[rowIndex];
+      parcela.jurosTotal = newValue + 0.005; // 0.5% fixo + juros poupança
+      parcela.jurosValor = parcela.parcelaSemJuros * parcela.jurosTotal;
+      parcela.parcelaComJuros = parcela.parcelaSemJuros + parcela.jurosValor;
+    }
+    
+    updatedData[activeTab] = parcelas;
+    setData(updatedData);
     setEditingCell(null);
     setEditValue('');
     
-    console.log('✅ Dados salvos com sucesso!');
+    console.log(`✅ Parcela ${parcelas[rowIndex].parcela} atualizada:`, field, '→', newValue);
   };
 
-  // Função para converter número em extenso
-  const numberToWords = (num: number): string => {
-    const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
-    const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-    const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-    const especiais = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
 
-    if (num === 0) return 'zero';
-    if (num === 100) return 'cem';
-
-    let resultado = '';
+  // ============================================
+  // 🔍 FILTRO E BUSCA
+  // ============================================
+  const filteredData = data[activeTab]?.filter(parcela => {
+    if (!searchTerm) return true;
     
-    // Milhares
-    if (num >= 1000) {
-      const milhares = Math.floor(num / 1000);
-      if (milhares === 1) {
-        resultado += 'mil ';
-      } else {
-        resultado += numberToWords(milhares) + ' mil ';
-      }
-      num %= 1000;
-    }
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      parcela.parcela.toString().includes(searchLower) ||
+      parcela.situacao.toLowerCase().includes(searchLower) ||
+      parcela.dataVencimento.includes(searchTerm) ||
+      parcela.dataEnvioBoleto.includes(searchTerm)
+    );
+  }) || [];
 
-    // Centenas
-    if (num >= 100) {
-      resultado += centenas[Math.floor(num / 100)] + ' ';
-      num %= 100;
-      if (num > 0) resultado += 'e ';
-    }
-
-    // Dezenas e unidades
-    if (num >= 20) {
-      resultado += dezenas[Math.floor(num / 10)];
-      num %= 10;
-      if (num > 0) resultado += ' e ' + unidades[num];
-    } else if (num >= 10) {
-      resultado += especiais[num - 10];
-    } else if (num > 0) {
-      resultado += unidades[num];
-    }
-
-    return resultado.trim();
-  };
-
-  // Gerar recibo
-  const generateReceipt = (parcela: Parcela) => {
-    const dataHoje = new Date().toLocaleDateString('pt-BR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-
-    const valorPorExtenso = numberToWords(Math.floor(parcela.parcelaComJuros)) + ' reais';
-    
-    // Calcular parcelas restantes (assumindo 144 total para Ively)
-    const totalParcelas = 144;
-    const parcelasRestantes = totalParcelas - parcela.parcela;
-
-    const reciboTexto = `
-RECIBO DE PAGAMENTO
-
-Pelo presente, eu Jhonatan da Silva, inscrito no CPF sob nº 438.358.908-16,
-declaro que RECEBI na data de hoje, o valor de ${formatCurrency(parcela.parcelaComJuros)}, ${valorPorExtenso},
-por meio de PIX, de Vanderlei Roberto Conceição, inscrito no CPF sob nº 028.821.198-79,
-referente à parcela ${parcela.parcela} de ${totalParcelas} referente ao imóvel denominado
-apartamento nº 14 (quatorze) do bloco A, localizado no 1º andar do RESIDENCIAL OLYMPO.
-
-Declaro que ainda restam pendentes ${parcelasRestantes} parcelas.
-
-Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.
-
-Guarujá, ${dataHoje}.
-
-_________________________________
-Jhonatan da Silva
-CPF: 438.358.908-16`;
-
-    // Criar modal com o recibo
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">Recibo - Parcela ${parcela.parcela}</h3>
-            <button id="close-modal" class="text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          <div class="bg-gray-50 p-4 rounded-lg mb-4">
-            <pre class="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">${reciboTexto}</pre>
-          </div>
-          <div class="flex justify-end space-x-3">
-            <button id="copy-receipt" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              📋 Copiar Texto
-            </button>
-            <button id="print-receipt" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              🖨️ Imprimir
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Event listeners
-    modal.querySelector('#close-modal')?.addEventListener('click', () => {
-      document.body.removeChild(modal);
-    });
-
-    modal.querySelector('#copy-receipt')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(reciboTexto);
-      alert('✅ Recibo copiado para a área de transferência!');
-    });
-
-    modal.querySelector('#print-receipt')?.addEventListener('click', () => {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Recibo - Parcela ${parcela.parcela}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
-                .recibo { max-width: 600px; margin: 0 auto; }
-                h1 { text-align: center; margin-bottom: 30px; }
-                pre { white-space: pre-wrap; font-family: Arial, sans-serif; }
-              </style>
-            </head>
-            <body>
-              <div class="recibo">
-                <pre>${reciboTexto}</pre>
-              </div>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-      }
-    });
-
-    // Fechar modal clicando fora
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        document.body.removeChild(modal);
-      }
-    });
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = data[activeTab]?.filter(item => 
-    item.parcela.toString().includes(searchTerm) ||
-    item.situacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    formatCurrency(item.parcelaComJuros).includes(searchTerm)
-  ) || [];
-
-  // Cores para status
-  const getStatusColor = (situacao: string) => {
-    switch (situacao) {
-      case 'Pago': return 'bg-green-100 text-green-800 border-green-200';
-      case 'À Vencer': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Vencida': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Cancelada': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  // Formatação de moeda
-  const formatCurrency = (value: number | null) => {
-    if (value === null || value === undefined) return '-';
+  // ============================================
+  // 🎨 FUNÇÕES DE FORMATAÇÃO
+  // ============================================
+  const formatCurrency = (value: number | null): string => {
+    if (value === null || value === undefined) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
   };
 
-  // Formatação de percentual
-  const formatPercentage = (value: number | null) => {
-    if (value === null || value === undefined) return '-';
-    return `${(value * 100).toFixed(4)}%`;
+  const formatPercentage = (value: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'percent',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(value);
   };
 
-  // Formatação de data
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     if (!dateString) return '-';
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR');
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return dateString;
+    }
   };
 
-  // Renderizar célula editável
+  const getSituacaoColor = (situacao: string): string => {
+    switch (situacao) {
+      case 'Pago': return 'bg-green-100 text-green-800 border-green-200';
+      case 'À Vencer': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Vencida': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Cancelada': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // ============================================
+  // 📊 CALCULAR ESTATÍSTICAS
+  // ============================================
+  const stats = React.useMemo(() => {
+    const currentData = data[activeTab] || [];
+    return {
+      total: currentData.length,
+      pagas: currentData.filter(p => p.situacao === 'Pago').length,
+      aVencer: currentData.filter(p => p.situacao === 'À Vencer').length,
+      vencidas: currentData.filter(p => p.situacao === 'Vencida').length,
+      valorTotal: currentData.reduce((sum, p) => sum + p.parcelaComJuros, 0),
+      valorPago: currentData.filter(p => p.valorPago !== null).reduce((sum, p) => sum + (p.valorPago || 0), 0),
+      totalJuros: currentData.reduce((sum, p) => sum + p.jurosValor, 0),
+      percentualPago: currentData.length > 0 ? Math.round((currentData.filter(p => p.situacao === 'Pago').length / currentData.length) * 100) : 0
+    };
+  }, [data, activeTab]);
+
+  // ============================================
+  // 🖊️ RENDERIZAR CAMPO EDITÁVEL
+  // ============================================
   const renderEditableCell = (value: any, rowIndex: number, field: keyof Parcela) => {
     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.field === field;
+    const isEditableField = ['jurosPoupanca', 'dataEnvioBoleto', 'dataVencimento', 'situacao'].includes(field);
     
+    if (!isEditableField) {
+      return <span>{value}</span>;
+    }
+
     if (isEditing) {
-      return (
-        <div className="flex items-center space-x-2">
-          {field === 'situacao' ? (
+      if (field === 'situacao') {
+        return (
+          <div className="flex items-center space-x-2">
             <select
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-2 focus:ring-blue-500 min-w-[100px]"
-              style={{ 
-                backgroundColor: '#ffffff',
-                color: '#000000',
-                fontWeight: 'bold'
-              }}
+              className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
               autoFocus
             >
-              <option style={{ color: '#000000', backgroundColor: '#ffffff' }} value="Pago">Pago</option>
-              <option style={{ color: '#000000', backgroundColor: '#ffffff' }} value="À Vencer">À Vencer</option>
-              <option style={{ color: '#000000', backgroundColor: '#ffffff' }} value="Vencida">Vencida</option>
-              <option style={{ color: '#000000', backgroundColor: '#ffffff' }} value="Cancelada">Cancelada</option>
+              <option value="Pago">Pago</option>
+              <option value="À Vencer">À Vencer</option>
+              <option value="Vencida">Vencida</option>
+              <option value="Cancelada">Cancelada</option>
             </select>
-          ) : field === 'jurosPoupanca' ? (
-            <input
-              type="text"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="px-2 py-1 border-2 border-orange-400 rounded text-xs focus:ring-2 focus:ring-orange-500"
-              style={{ 
-                width: '100px',
-                backgroundColor: '#fff7ed',
-                color: '#000000',
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}
-              placeholder="Ex: 0.3715"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveEdit();
-                if (e.key === 'Escape') cancelEditing();
-              }}
-            />
-          ) : (
-            <input
-              type={field.includes('data') ? 'date' : 'text'}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
-              style={{ 
-                minWidth: field.includes('data') ? '130px' : '80px',
-                backgroundColor: '#ffffff',
-                color: '#000000',
-                fontWeight: 'bold'
-              }}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveEdit();
-                if (e.key === 'Escape') cancelEditing();
-              }}
-            />
-          )}
-          <button
-            onClick={saveEdit}
-            className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors"
-            title="Salvar (Enter)"
-          >
-            <Check size={14} />
+            <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
+              <Check size={16} />
+            </button>
+            <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
+              <X size={16} />
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center space-x-2">
+          <input
+            type={field.includes('data') ? 'date' : field === 'jurosPoupanca' ? 'number' : 'text'}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+            style={{ width: field.includes('data') ? '140px' : '100px' }}
+            step={field === 'jurosPoupanca' ? '0.000001' : undefined}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveEdit();
+              if (e.key === 'Escape') cancelEditing();
+            }}
+          />
+          <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
+            <Check size={16} />
           </button>
-          <button
-            onClick={cancelEditing}
-            className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-            title="Cancelar (Esc)"
-          >
-            <X size={14} />
+          <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
+            <X size={16} />
           </button>
         </div>
       );
     }
 
-    // Renderização normal
-    const displayValue = (() => {
-      switch (field) {
-        case 'jurosPoupanca':
-          return <span className="text-orange-600 font-medium">{formatPercentage(value)}</span>;
-        case 'dataEnvioBoleto':
-        case 'dataVencimento':
-          return <span className="flex items-center"><Calendar size={12} className="mr-1 text-gray-400" />{formatDate(value)}</span>;
-        case 'situacao':
-          return (
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(value)}`}>
-              {value}
-            </span>
-          );
-        default:
-          return value;
-      }
-    })();
-
+    // Renderização normal com botão de edição
     return (
-      <div className="flex items-center justify-between group">
-        <div className="flex-1">{displayValue}</div>
+      <div className="group flex items-center justify-between">
+        <span className={
+          field === 'jurosPoupanca' ? 'text-orange-600 font-medium' :
+          field === 'situacao' ? `px-2 py-1 rounded-full text-xs font-medium ${getSituacaoColor(value)}` :
+          'text-gray-900'
+        }>
+          {field === 'jurosPoupanca' ? formatPercentage(value) :
+           field.includes('data') ? formatDate(value) :
+           value}
+        </span>
         <button
           onClick={() => startEditing(rowIndex, field, value)}
-          className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:bg-blue-100 rounded transition-opacity"
-          title={`Editar ${field}`}
+          className="opacity-0 group-hover:opacity-100 text-blue-600 hover:text-blue-800 ml-2"
         >
-          <Edit2 size={12} />
+          <Edit2 size={14} />
         </button>
       </div>
     );
   };
 
-  // Calcular estatísticas
-  const stats = {
-    total: filteredData.length,
-    pago: filteredData.filter(item => item.situacao === 'Pago').length,
-    aVencer: filteredData.filter(item => item.situacao === 'À Vencer').length,
-    vencida: filteredData.filter(item => item.situacao === 'Vencida').length,
-    totalValor: filteredData.reduce((sum, item) => sum + (item.parcelaComJuros || 0), 0),
-    totalPago: filteredData.filter(item => item.situacao === 'Pago').reduce((sum, item) => sum + (item.valorPago || 0), 0),
-    totalJuros: filteredData.reduce((sum, item) => sum + (item.jurosValor || 0), 0)
+  // ============================================
+  // 🖨️ GERAR RECIBO
+  // ============================================
+  const generateReceipt = (parcela: Parcela) => {
+    console.log('📄 Gerando recibo para parcela:', parcela.parcela);
+    // Implementar geração de PDF aqui
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-blue-900 text-white transition-all duration-300 flex flex-col flex-shrink-0`}>
-        <div className="p-4 border-b border-blue-800">
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-white shadow-lg transition-all duration-300 flex-shrink-0`}>
+        <div className="p-4">
           <div className="flex items-center justify-between">
-            {sidebarOpen && (
-              <h1 className="text-xl font-bold">JN Finanças</h1>
-            )}
+            <h1 className={`font-bold text-xl text-gray-800 ${!sidebarOpen && 'hidden'}`}>
+              JN Finanças
+            </h1>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-blue-800 rounded transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100"
             >
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              <Menu size={20} />
             </button>
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
-          <button
-            onClick={() => setActiveTab('ively')}
-            className={`w-full flex items-center p-3 rounded-lg transition-colors ${
-              activeTab === 'ively' ? 'bg-blue-800 border-l-4 border-blue-400' : 'hover:bg-blue-800'
-            }`}
-          >
-            <Home size={20} />
-            {sidebarOpen && <span className="ml-3">14(A) Ively</span>}
-          </button>
+        <nav className="mt-8">
+          <div className="px-4 space-y-2">
+            <button
+              onClick={() => setActiveTab('ively')}
+              className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'ively' 
+                  ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Home className="mr-3" size={20} />
+              {sidebarOpen && (
+                <div>
+                  <div className="font-medium">Ively</div>
+                  <div className="text-xs text-gray-500">Apto 14(A)</div>
+                </div>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab('renato')}
-            className={`w-full flex items-center p-3 rounded-lg transition-colors ${
-              activeTab === 'renato' ? 'bg-blue-800 border-l-4 border-blue-400' : 'hover:bg-blue-800'
-            }`}
-          >
-            <Home size={20} />
-            {sidebarOpen && <span className="ml-3">14(B) Renato</span>}
-          </button>
-
-          <button
-            className="w-full flex items-center p-3 rounded-lg hover:bg-blue-800 transition-colors opacity-50 cursor-not-allowed"
-            disabled
-          >
-            <Plus size={20} />
-            {sidebarOpen && <span className="ml-3">Novo Imóvel</span>}
-          </button>
-
-          <button
-            className="w-full flex items-center p-3 rounded-lg hover:bg-blue-800 transition-colors opacity-50 cursor-not-allowed"
-            disabled
-          >
-            <FileText size={20} />
-            {sidebarOpen && <span className="ml-3">Relatórios</span>}
-          </button>
+            <button
+              onClick={() => setActiveTab('renato')}
+              className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'renato' 
+                  ? 'bg-green-100 text-green-700 border-l-4 border-green-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Home className="mr-3" size={20} />
+              {sidebarOpen && (
+                <div>
+                  <div className="font-medium">Renato</div>
+                  <div className="text-xs text-gray-500">Apto 14(B)</div>
+                </div>
+              )}
+            </button>
+          </div>
         </nav>
-
-        <div className="p-4 border-t border-blue-800">
-          <p className="text-xs text-blue-300">
-            {sidebarOpen ? 'Sistema de Controle Financeiro' : 'JN'}
-          </p>
-        </div>
       </div>
 
       {/* Conteúdo Principal */}
       <div className="flex-1 overflow-hidden">
         {/* Header */}
         <div className="bg-white shadow-sm border-b p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 space-y-4 lg:space-y-0">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 capitalize">
-                Imóvel {activeTab === 'ively' ? '14(A) Ively' : '14(B) Renato'}
+              <h2 className="text-2xl font-bold text-gray-900">
+                {activeTab === 'ively' ? 'Ively - Apartamento 14(A)' : 'Renato - Apartamento 14(B)'}
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                ✅ Sistema funcionando perfeitamente - Estrutura corrigida para Vercel
+              <p className="text-gray-600 mt-1">
+                RESIDENCIAL OLYMPO - {stats.total} parcelas ({stats.percentualPago}% concluído)
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+
+            <div className="flex items-center space-x-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Buscar parcela, valor ou situação..."
+                  placeholder="Buscar parcela..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-80"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                onClick={() => alert('🔄 Integração Firebase em desenvolvimento')}
-              >
-                <Save size={16} className="mr-2" />
-                Salvar
-              </button>
-              <button 
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
-                onClick={() => alert('📊 Exportação Excel/PDF em desenvolvimento')}
-              >
+              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 <Download size={16} className="mr-2" />
                 Exportar
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+        {/* Dashboard Cards */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center">
                 <FileText className="text-blue-600 mr-3" size={24} />
@@ -600,17 +370,17 @@ CPF: 438.358.908-16`;
 
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <div className="flex items-center">
-                <DollarSign className="text-green-600 mr-3" size={24} />
+                <FileText className="text-green-600 mr-3" size={24} />
                 <div>
                   <p className="text-sm text-gray-600">Pagas</p>
-                  <p className="text-xl font-bold text-green-600">{stats.pago}</p>
+                  <p className="text-xl font-bold text-green-600">{stats.pagas}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <div className="flex items-center">
-                <Calendar className="text-yellow-600 mr-3" size={24} />
+                <FileText className="text-yellow-600 mr-3" size={24} />
                 <div>
                   <p className="text-sm text-gray-600">À Vencer</p>
                   <p className="text-xl font-bold text-yellow-600">{stats.aVencer}</p>
@@ -620,10 +390,10 @@ CPF: 438.358.908-16`;
 
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
               <div className="flex items-center">
-                <Calendar className="text-red-600 mr-3" size={24} />
+                <FileText className="text-red-600 mr-3" size={24} />
                 <div>
                   <p className="text-sm text-gray-600">Vencidas</p>
-                  <p className="text-xl font-bold text-red-600">{stats.vencida}</p>
+                  <p className="text-xl font-bold text-red-600">{stats.vencidas}</p>
                 </div>
               </div>
             </div>
@@ -632,8 +402,8 @@ CPF: 438.358.908-16`;
               <div className="flex items-center">
                 <DollarSign className="text-purple-600 mr-3" size={24} />
                 <div>
-                  <p className="text-sm text-gray-600">Valor Total</p>
-                  <p className="text-lg font-bold text-purple-600">{formatCurrency(stats.totalValor)}</p>
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-lg font-bold text-purple-600">{formatCurrency(stats.valorTotal)}</p>
                 </div>
               </div>
             </div>
@@ -642,152 +412,122 @@ CPF: 438.358.908-16`;
               <div className="flex items-center">
                 <DollarSign className="text-emerald-600 mr-3" size={24} />
                 <div>
-                  <p className="text-sm text-gray-600">Total Pago</p>
-                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(stats.totalPago)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-              <div className="flex items-center">
-                <Percent className="text-orange-600 mr-3" size={24} />
-                <div>
-                  <p className="text-sm text-gray-600">Juros Total</p>
-                  <p className="text-lg font-bold text-orange-600">{formatCurrency(stats.totalJuros)}</p>
+                  <p className="text-sm text-gray-600">Pago</p>
+                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(stats.valorPago)}</p>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Tabela */}
-        <div className="p-6 overflow-auto">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Carregando dados...</span>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden border">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                    <tr>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Parcela
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Parcela Sem Juros
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Parcela com Juros
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Valor Pago
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        <div className="flex items-center">
-                          Juros Poupança
-                          <Edit2 size={12} className="ml-1 text-blue-200" />
-                        </div>
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        <div className="flex items-center">
-                          Juros Total % 
-                          <span className="ml-1 text-blue-200 text-xs">(0.5% + Poupança)</span>
-                        </div>
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Juros Total R$
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        <div className="flex items-center">
-                          Data Envio Boleto
-                          <Edit2 size={12} className="ml-1 text-blue-200" />
-                        </div>
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        <div className="flex items-center">
-                          Data Vencimento
-                          <Edit2 size={12} className="ml-1 text-blue-200" />
-                        </div>
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        <div className="flex items-center">
-                          Situação
-                          <Edit2 size={12} className="ml-1 text-blue-200" />
-                        </div>
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Ações
-                      </th>
+          {/* Tabela */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Parcela
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sem Juros
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Com Juros
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor Pago
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Juros Poupança
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Juros Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor Juros
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Envio Boleto
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vencimento
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Situação
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredData.map((parcela, index) => (
+                    <tr key={parcela.parcela} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {parcela.parcela}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(parcela.parcelaSemJuros)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                        {formatCurrency(parcela.parcelaComJuros)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <span className={parcela.valorPago ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                          {formatCurrency(parcela.valorPago)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.jurosPoupanca, index, 'jurosPoupanca')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-700 font-medium">
+                        {formatPercentage(parcela.jurosTotal)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                        {formatCurrency(parcela.jurosValor)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.dataEnvioBoleto, index, 'dataEnvioBoleto')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.dataVencimento, index, 'dataVencimento')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.situacao, index, 'situacao')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => generateReceipt(parcela)}
+                          className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md text-sm font-medium transition-all hover:shadow-md"
+                        >
+                          <FileText size={16} className="mr-1" />
+                          Recibo
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredData.map((item, index) => (
-                      <tr key={`${activeTab}-${item.parcela}`} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">
-                            #{item.parcela}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                          {formatCurrency(item.parcelaSemJuros)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold text-blue-600">
-                          {formatCurrency(item.parcelaComJuros)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <span className={item.valorPago ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                            {formatCurrency(item.valorPago)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.jurosPoupanca, index, 'jurosPoupanca')}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-700 font-medium">
-                          {formatPercentage(item.jurosTotal)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
-                          {formatCurrency(item.jurosValor)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.dataEnvioBoleto, index, 'dataEnvioBoleto')}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.dataVencimento, index, 'dataVencimento')}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.situacao, index, 'situacao')}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <button
-                            onClick={() => generateReceipt(item)}
-                            className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md text-sm font-medium transition-all hover:shadow-md"
-                          >
-                            <FileText size={16} className="mr-1" />
-                            Recibo
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Footer da Tabela */}
-              <div className="bg-gray-50 px-6 py-3 border-t">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
-                  <p className="text-sm text-gray-600">
-                    Mostrando {filteredData.length} de {data[activeTab]?.length || 0} parcelas
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <span className="text-gray-600">
-                      Total a Receber: <span className="font-semibold text-blue-600">{formatCurrency(stats.totalValor - stats.totalPago)}</span>
-                    </span>
-                  </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer da Tabela */}
+            <div className="bg-gray-50 px-6 py-3 border-t">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                <p className="text-sm text-gray-600">
+                  Mostrando {filteredData.length} de {data[activeTab]?.length || 0} parcelas
+                </p>
+                <div className="flex items-center space-x-4 text-sm">
+                  <span className="text-gray-600">
+                    Total a Receber: <span className="font-semibold text-blue-600">{formatCurrency(stats.valorTotal - stats.valorPago)}</span>
+                  </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {filteredData.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhuma parcela encontrada com os critérios de busca.</p>
             </div>
           )}
         </div>
