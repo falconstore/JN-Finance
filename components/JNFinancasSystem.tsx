@@ -102,6 +102,42 @@ const JNFinancasSystem: React.FC = () => {
         dataEnvioBoleto: '2019-08-15',
         dataVencimento: '2019-08-22',
         situacao: 'Pago'
+      },
+      {
+        parcela: 2,
+        parcelaSemJuros: 1632.15,
+        parcelaComJuros: 1646.38,
+        valorPago: 1646.38,
+        jurosPoupanca: 0.003715,
+        jurosTotal: 0.008715,
+        jurosValor: 14.22,
+        dataEnvioBoleto: '2019-09-17',
+        dataVencimento: '2019-09-24',
+        situacao: 'Pago'
+      },
+      {
+        parcela: 3,
+        parcelaSemJuros: 1646.38,
+        parcelaComJuros: 1660.73,
+        valorPago: null,
+        jurosPoupanca: 0.003715,
+        jurosTotal: 0.008715,
+        jurosValor: 14.35,
+        dataEnvioBoleto: '2019-10-17',
+        dataVencimento: '2019-10-24',
+        situacao: 'À Vencer'
+      },
+      {
+        parcela: 4,
+        parcelaSemJuros: 1660.73,
+        parcelaComJuros: 1675.21,
+        valorPago: null,
+        jurosPoupanca: 0.003715,
+        jurosTotal: 0.008715,
+        jurosValor: 14.48,
+        dataEnvioBoleto: '2019-11-17',
+        dataVencimento: '2019-11-24',
+        situacao: 'Vencida'
       }
     ]
   };
