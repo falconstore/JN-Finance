@@ -1,4 +1,4 @@
-import { ImovelData } from '@/types';
+import { ImovelData } from '../types';
 import { ivelyDatabase, ivelyInfo } from './ively-database';
 import { renatoDatabase, renatoInfo } from './renato-database';
 
