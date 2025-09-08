@@ -1,47 +1,121 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save } from 'lucide-react';
-import { Parcela, ImovelData, EditingCell, TabType } from '../types';
-// IMPORTANTE: Importar os dados usando path relativo
-import { database, imoveisInfo, getEstatisticas } from '../data';
+import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save, Printer } from 'lucide-react';
+
+// Tipos (simulando as importações)
+interface Parcela {
+  parcela: number;
+  parcelaSemJuros: number;
+  parcelaComJuros: number;
+  valorPago: number | null;
+  jurosPoupanca: number;
+  jurosTotal: number;
+  jurosValor: number;
+  dataEnvioBoleto: string;
+  dataVencimento: string;
+  situacao: 'Pago' | 'À Vencer' | 'Vencida' | 'Cancelada';
+}
+
+interface ImovelData {
+  ively: Parcela[];
+  renato: Parcela[];
+}
+
+type TabType = 'ively' | 'renato';
+
+interface EditingCell {
+  rowIndex: number;
+  field: keyof Parcela;
+}
+
+// Dados de exemplo (simulando as importações)
+const sampleDatabase: ImovelData = {
+  ively: [
+    {
+      parcela: 1,
+      parcelaSemJuros: 1493.06,
+      parcelaComJuros: 1506.07,
+      valorPago: 1506.07,
+      jurosPoupanca: 0.003715,
+      jurosTotal: 0.008715,
+      jurosValor: 13.01,
+      dataEnvioBoleto: '2019-09-11',
+      dataVencimento: '2019-09-18',
+      situacao: 'Pago'
+    },
+    {
+      parcela: 2,
+      parcelaSemJuros: 1506.07,
+      parcelaComJuros: 1518.77,
+      valorPago: 1518.77,
+      jurosPoupanca: 0.003434,
+      jurosTotal: 0.008434,
+      jurosValor: 12.70,
+      dataEnvioBoleto: '2019-10-21',
+      dataVencimento: '2019-10-27',
+      situacao: 'Pago'
+    }
+  ],
+  renato: [
+    {
+      parcela: 1,
+      parcelaSemJuros: 1618.05,
+      parcelaComJuros: 1632.15,
+      valorPago: 1632.15,
+      jurosPoupanca: 0.003715,
+      jurosTotal: 0.008715,
+      jurosValor: 14.10,
+      dataEnvioBoleto: '2019-08-15',
+      dataVencimento: '2019-08-21',
+      situacao: 'Pago'
+    }
+  ]
+};
+
+const imoveisInfo = {
+  ively: {
+    nome: 'Ively',
+    imovel: 'Apartamento nº 14(A)',
+    bloco: 'Bloco A',
+    andar: '1º andar',
+    condominio: 'RESIDENCIAL OLYMPO',
+    recebedor: {
+      nome: 'Jhonatan da Silva',
+      cpf: '438.358.908-16'
+    },
+    pagador: {
+      nome: 'Vanderlei Roberto Conceição',
+      cpf: '028.821.198-79'
+    },
+    totalParcelas: 144
+  },
+  renato: {
+    nome: 'Renato',
+    imovel: 'Apartamento nº 14(B)',
+    bloco: 'Bloco A',
+    andar: '1º andar',
+    condominio: 'RESIDENCIAL OLYMPO',
+    recebedor: {
+      nome: 'Jhonatan da Silva',
+      cpf: '438.358.908-16'
+    },
+    pagador: {
+      nome: 'Vanderlei Roberto Conceição',
+      cpf: '028.821.198-79'
+    },
+    totalParcelas: 144
+  }
+};
 
 const JNFinancasSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('ively');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [data, setData] = useState<ImovelData>({
-    ively: [],
-    renato: []
-  });
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<ImovelData>(sampleDatabase);
+  const [loading, setLoading] = useState(false);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState('');
-
-  // ============================================
-  // 🔄 CARREGAMENTO DOS DADOS COMPLETOS
-  // ============================================
-  useEffect(() => {
-    console.log('🚀 Carregando dados completos da Ively e Renato...');
-    
-    try {
-      // Carregar dados completos dos arquivos
-      console.log('📊 Dados Ively:', database.ively.length, 'parcelas');
-      console.log('📊 Dados Renato:', database.renato.length, 'parcelas');
-      
-      setData({
-        ively: database.ively,  // 144 parcelas completas
-        renato: database.renato // 144 parcelas completas
-      });
-      
-      setLoading(false);
-      console.log('✅ Dados carregados com sucesso!');
-      console.log('📈 Estatísticas Ively:', getEstatisticas('ively'));
-      console.log('📈 Estatísticas Renato:', getEstatisticas('renato'));
-      
-    } catch (error) {
-      console.error('❌ Erro ao carregar dados:', error);
-      setLoading(false);
-    }
-  }, []);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedParcela, setSelectedParcela] = useState<Parcela | null>(null);
 
   // ============================================
   // 📝 FUNÇÕES DE EDIÇÃO
@@ -58,7 +132,6 @@ const JNFinancasSystem: React.FC = () => {
     const updatedData = { ...data };
     const parcelas = [...updatedData[activeTab]];
     
-    // Converter valor conforme o tipo do campo
     let newValue: any = editValue;
     
     if (field === 'jurosPoupanca' || field === 'jurosTotal' || field === 'jurosValor' || 
@@ -71,10 +144,9 @@ const JNFinancasSystem: React.FC = () => {
       [field]: newValue
     };
     
-    // Se alterou juros poupança, recalcular juros total e valor dos juros
     if (field === 'jurosPoupanca') {
       const parcela = parcelas[rowIndex];
-      parcela.jurosTotal = newValue + 0.005; // 0.5% fixo + juros poupança
+      parcela.jurosTotal = newValue + 0.005;
       parcela.jurosValor = parcela.parcelaSemJuros * parcela.jurosTotal;
       parcela.parcelaComJuros = parcela.parcelaSemJuros + parcela.jurosValor;
     }
@@ -83,8 +155,6 @@ const JNFinancasSystem: React.FC = () => {
     setData(updatedData);
     setEditingCell(null);
     setEditValue('');
-    
-    console.log(`✅ Parcela ${parcelas[rowIndex].parcela} atualizada:`, field, '→', newValue);
   };
 
   const cancelEditing = () => {
@@ -224,7 +294,6 @@ const JNFinancasSystem: React.FC = () => {
       );
     }
 
-    // Renderização normal com botão de edição
     return (
       <div className="group flex items-center justify-between">
         <span className={
@@ -247,11 +316,291 @@ const JNFinancasSystem: React.FC = () => {
   };
 
   // ============================================
-  // 🖨️ GERAR RECIBO
+  // 🖨️ GERAR RECIBO - IMPLEMENTAÇÃO REAL
   // ============================================
   const generateReceipt = (parcela: Parcela) => {
-    console.log('📄 Gerando recibo para parcela:', parcela.parcela);
-    // Implementar geração de PDF aqui
+    setSelectedParcela(parcela);
+    setShowReceiptModal(true);
+  };
+
+  const printReceipt = () => {
+    const receiptWindow = window.open('', '_blank');
+    if (!receiptWindow || !selectedParcela) return;
+
+    const imovelInfo = imoveisInfo[activeTab];
+    const hoje = new Date().toLocaleDateString('pt-BR');
+
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Recibo - Parcela ${selectedParcela.parcela}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            line-height: 1.6;
+          }
+          .header { 
+            text-align: center; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px;
+          }
+          .title { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #333;
+            margin-bottom: 10px;
+          }
+          .subtitle { 
+            font-size: 16px; 
+            color: #666;
+          }
+          .info-section { 
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+          }
+          .info-title { 
+            font-weight: bold; 
+            font-size: 18px; 
+            color: #333;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+          }
+          .info-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px;
+          }
+          .label { 
+            font-weight: bold; 
+            color: #555;
+          }
+          .value { 
+            color: #333;
+          }
+          .amount-section {
+            background: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+          }
+          .amount-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 10px;
+          }
+          .amount-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #28a745;
+          }
+          .signature-section {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+          }
+          .signature-box {
+            text-align: center;
+            width: 200px;
+          }
+          .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+          }
+          .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+          }
+          @media print {
+            body { 
+              padding: 0;
+              max-width: none;
+            }
+            .no-print { 
+              display: none; 
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">RECIBO DE PAGAMENTO</div>
+          <div class="subtitle">${imovelInfo.condominio}</div>
+          <div class="subtitle">${imovelInfo.imovel} - ${imovelInfo.bloco}</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-title">🏠 Informações do Imóvel</div>
+          <div class="info-row">
+            <span class="label">Condomínio:</span>
+            <span class="value">${imovelInfo.condominio}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Apartamento:</span>
+            <span class="value">${imovelInfo.imovel}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Bloco:</span>
+            <span class="value">${imovelInfo.bloco}</span>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-title">👤 Dados do Pagamento</div>
+          <div class="info-row">
+            <span class="label">Recebedor:</span>
+            <span class="value">${imovelInfo.recebedor.nome}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">CPF:</span>
+            <span class="value">${imovelInfo.recebedor.cpf}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Pagador:</span>
+            <span class="value">${imovelInfo.pagador.nome}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">CPF:</span>
+            <span class="value">${imovelInfo.pagador.cpf}</span>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-title">📋 Detalhes da Parcela</div>
+          <div class="info-row">
+            <span class="label">Parcela:</span>
+            <span class="value">${selectedParcela.parcela} de ${imovelInfo.totalParcelas}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Data de Vencimento:</span>
+            <span class="value">${formatDate(selectedParcela.dataVencimento)}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Data de Envio do Boleto:</span>
+            <span class="value">${formatDate(selectedParcela.dataEnvioBoleto)}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Situação:</span>
+            <span class="value">${selectedParcela.situacao}</span>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-title">💰 Valores</div>
+          <div class="info-row">
+            <span class="label">Parcela sem Juros:</span>
+            <span class="value">${formatCurrency(selectedParcela.parcelaSemJuros)}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Juros Poupança:</span>
+            <span class="value">${formatPercentage(selectedParcela.jurosPoupanca)}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Juros Total:</span>
+            <span class="value">${formatPercentage(selectedParcela.jurosTotal)}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Valor dos Juros:</span>
+            <span class="value">${formatCurrency(selectedParcela.jurosValor)}</span>
+          </div>
+        </div>
+
+        <div class="amount-section">
+          <div class="amount-title">VALOR TOTAL DA PARCELA</div>
+          <div class="amount-value">${formatCurrency(selectedParcela.parcelaComJuros)}</div>
+        </div>
+
+        ${selectedParcela.valorPago ? `
+        <div class="amount-section" style="background: #e8f5e8; border-color: #28a745;">
+          <div class="amount-title" style="color: #28a745;">VALOR PAGO</div>
+          <div class="amount-value" style="color: #28a745;">${formatCurrency(selectedParcela.valorPago)}</div>
+        </div>
+        ` : ''}
+
+        <div class="signature-section">
+          <div class="signature-box">
+            <div class="signature-line">Recebedor</div>
+            <div style="margin-top: 5px; font-size: 12px;">${imovelInfo.recebedor.nome}</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">Pagador</div>
+            <div style="margin-top: 5px; font-size: 12px;">${imovelInfo.pagador.nome}</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Recibo gerado automaticamente pelo Sistema JN Finanças</p>
+          <p>Data de emissão: ${hoje}</p>
+          <p>Este documento possui validade legal para comprovação de pagamento</p>
+        </div>
+
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    receiptWindow.document.write(receiptHTML);
+    receiptWindow.document.close();
+  };
+
+  const downloadReceiptPDF = async () => {
+    if (!selectedParcela) return;
+
+    // Simulação de download - em produção você usaria uma biblioteca como jsPDF
+    const element = document.createElement('a');
+    const imovelInfo = imoveisInfo[activeTab];
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    const textContent = `
+RECIBO DE PAGAMENTO
+${imovelInfo.condominio}
+${imovelInfo.imovel} - ${imovelInfo.bloco}
+
+DADOS DO PAGAMENTO
+Recebedor: ${imovelInfo.recebedor.nome}
+CPF: ${imovelInfo.recebedor.cpf}
+Pagador: ${imovelInfo.pagador.nome}
+
+DETALHES DA PARCELA
+Parcela: ${selectedParcela.parcela} de ${imovelInfo.totalParcelas}
+Data de Vencimento: ${formatDate(selectedParcela.dataVencimento)}
+Situação: ${selectedParcela.situacao}
+
+VALORES
+Parcela sem Juros: ${formatCurrency(selectedParcela.parcelaSemJuros)}
+Valor dos Juros: ${formatCurrency(selectedParcela.jurosValor)}
+VALOR TOTAL: ${formatCurrency(selectedParcela.parcelaComJuros)}
+${selectedParcela.valorPago ? `VALOR PAGO: ${formatCurrency(selectedParcela.valorPago)}` : ''}
+
+Emitido em: ${hoje}
+    `;
+
+    const file = new Blob([textContent], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
   };
 
   if (loading) {
@@ -532,6 +881,81 @@ const JNFinancasSystem: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Modal do Recibo */}
+      {showReceiptModal && selectedParcela && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Recibo - Parcela {selectedParcela.parcela}
+                </h3>
+                <button
+                  onClick={() => setShowReceiptModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Preview do Recibo */}
+              <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-gray-50">
+                <div className="text-center mb-4">
+                  <h4 className="text-lg font-bold">RECIBO DE PAGAMENTO</h4>
+                  <p className="text-gray-600">{imoveisInfo[activeTab].condominio}</p>
+                  <p className="text-gray-600">{imoveisInfo[activeTab].imovel}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p><strong>Parcela:</strong> {selectedParcela.parcela}</p>
+                    <p><strong>Vencimento:</strong> {formatDate(selectedParcela.dataVencimento)}</p>
+                    <p><strong>Situação:</strong> {selectedParcela.situacao}</p>
+                  </div>
+                  <div>
+                    <p><strong>Valor sem Juros:</strong> {formatCurrency(selectedParcela.parcelaSemJuros)}</p>
+                    <p><strong>Valor dos Juros:</strong> {formatCurrency(selectedParcela.jurosValor)}</p>
+                    <p><strong>Total:</strong> {formatCurrency(selectedParcela.parcelaComJuros)}</p>
+                  </div>
+                </div>
+
+                {selectedParcela.valorPago && (
+                  <div className="mt-4 p-3 bg-green-100 rounded-lg text-center">
+                    <p className="text-green-800 font-semibold">
+                      Valor Pago: {formatCurrency(selectedParcela.valorPago)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex space-x-4">
+                <button
+                  onClick={printReceipt}
+                  className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Printer size={16} className="mr-2" />
+                  Imprimir Recibo
+                </button>
+                <button
+                  onClick={downloadReceiptPDF}
+                  className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Download size={16} className="mr-2" />
+                  Baixar PDF
+                </button>
+                <button
+                  onClick={() => setShowReceiptModal(false)}
+                  className="flex items-center justify-center px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
