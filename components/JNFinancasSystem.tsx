@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save } from 'lucide-react';
-import { Parcela, ImovelData, EditingCell, TabType } from '@/types';
-// IMPORTANTE: Importar os dados completos dos arquivos de dados
-import { database, imoveisInfo } from '@/data';
+import { Parcela, ImovelData, EditingCell, TabType } from '../types';
+// IMPORTANTE: Importar os dados usando path relativo
+import { database, imoveisInfo, getEstatisticas } from '../data';
 
 const JNFinancasSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('ively');
@@ -22,518 +22,514 @@ const JNFinancasSystem: React.FC = () => {
   useEffect(() => {
     console.log('🚀 Carregando dados completos da Ively e Renato...');
     
-    // Simulando carregamento (pode ser removido em produção)
-    const timer = setTimeout(() => {
+    try {
       // Carregar dados completos dos arquivos
+      console.log('📊 Dados Ively:', database.ively.length, 'parcelas');
+      console.log('📊 Dados Renato:', database.renato.length, 'parcelas');
+      
       setData({
         ively: database.ively,  // 144 parcelas completas
         renato: database.renato // 144 parcelas completas
       });
+      
       setLoading(false);
       console.log('✅ Dados carregados com sucesso!');
-      console.log(`📊 Ively: ${database.ively.length} parcelas`);
-      console.log(`📊 Renato: ${database.renato.length} parcelas`);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+      console.log('📈 Estatísticas Ively:', getEstatisticas('ively'));
+      console.log('📈 Estatísticas Renato:', getEstatisticas('renato'));
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados:', error);
+      setLoading(false);
+    }
   }, []);
 
   // ============================================
-  // 🧮 FUNÇÕES DE CÁLCULO
+  // 📝 FUNÇÕES DE EDIÇÃO
   // ============================================
-  const recalculateFromParcela = (newData: ImovelData, imovel: TabType, startIndex: number) => {
-    console.log(`🔄 Recalculando parcelas a partir da ${startIndex + 1} para ${imovel}`);
-    
-    const parcelas = newData[imovel];
-    
-    for (let i = startIndex; i < parcelas.length - 1; i++) {
-      const currentParcela = parcelas[i];
-      const nextParcela = parcelas[i + 1];
-      
-      // Recalcular parcela atual
-      currentParcela.jurosTotal = 0.005 + currentParcela.jurosPoupanca;
-      currentParcela.jurosValor = currentParcela.parcelaSemJuros * currentParcela.jurosTotal;
-      currentParcela.parcelaComJuros = currentParcela.parcelaSemJuros + currentParcela.jurosValor;
-      
-      // Próxima parcela sem juros = parcela com juros atual
-      nextParcela.parcelaSemJuros = currentParcela.parcelaComJuros;
-    }
-    
-    // Recalcular última parcela
-    const lastIndex = parcelas.length - 1;
-    const lastParcela = parcelas[lastIndex];
-    lastParcela.jurosTotal = 0.005 + lastParcela.jurosPoupanca;
-    lastParcela.jurosValor = lastParcela.parcelaSemJuros * lastParcela.jurosTotal;
-    lastParcela.parcelaComJuros = lastParcela.parcelaSemJuros + lastParcela.jurosValor;
-  };
-
-  // ============================================
-  // 📊 ESTATÍSTICAS
-  // ============================================
-  const currentData = data[activeTab];
-  const stats = {
-    total: currentData.length,
-    pagas: currentData.filter(p => p.situacao === 'Pago').length,
-    aVencer: currentData.filter(p => p.situacao === 'À Vencer').length,
-    vencidas: currentData.filter(p => p.situacao === 'Vencida').length,
-    valorTotal: currentData.reduce((sum, p) => sum + p.parcelaComJuros, 0),
-    valorPago: currentData.filter(p => p.valorPago !== null).reduce((sum, p) => sum + (p.valorPago || 0), 0),
-    totalJuros: currentData.reduce((sum, p) => sum + p.jurosValor, 0)
-  };
-  
-  stats.valorRestante = stats.valorTotal - stats.valorPago;
-  stats.percentualPago = stats.total > 0 ? Math.round((stats.pagas / stats.total) * 100) : 0;
-
-  // ============================================
-  // 🔍 FILTROS
-  // ============================================
-  const filteredData = currentData.filter(parcela => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      parcela.parcela.toString().includes(term) ||
-      parcela.situacao.toLowerCase().includes(term) ||
-      parcela.parcelaComJuros.toFixed(2).includes(term) ||
-      parcela.dataVencimento.includes(term)
-    );
-  });
-
-  // ============================================
-  // ✏️ FUNÇÕES DE EDIÇÃO
-  // ============================================
-  const startEditing = (rowIndex: number, field: keyof Parcela) => {
-    const allowedFields: (keyof Parcela)[] = ['jurosPoupanca', 'dataEnvioBoleto', 'dataVencimento', 'situacao'];
-    
-    if (!allowedFields.includes(field)) {
-      console.log(`❌ Campo ${field} não é editável`);
-      return;
-    }
-    
-    console.log(`✏️ Editando: Parcela ${rowIndex + 1}, Campo: ${field}`);
+  const startEditing = (rowIndex: number, field: keyof Parcela, currentValue?: any) => {
     setEditingCell({ rowIndex, field });
-    
-    const currentValue = currentData[rowIndex][field];
-    if (field === 'jurosPoupanca') {
-      setEditValue(currentValue ? (currentValue * 100).toFixed(4) : '0.0000');
-    } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
-      setEditValue(currentValue || '');
-    } else {
-      setEditValue(currentValue?.toString() || '');
-    }
-  };
-
-  const cancelEditing = () => {
-    console.log('❌ Edição cancelada');
-    setEditingCell(null);
-    setEditValue('');
+    setEditValue(currentValue?.toString() || '');
   };
 
   const saveEdit = () => {
     if (!editingCell) return;
-    
+
     const { rowIndex, field } = editingCell;
-    console.log(`💾 Salvando: Parcela ${rowIndex + 1}, ${field} = "${editValue}"`);
+    const updatedData = { ...data };
+    const parcelas = [...updatedData[activeTab]];
     
-    const newData = JSON.parse(JSON.stringify(data)) as ImovelData;
-    let processedValue: any = editValue;
+    // Converter valor conforme o tipo do campo
+    let newValue: any = editValue;
     
-    if (field === 'jurosPoupanca') {
-      const numValue = parseFloat(editValue);
-      if (isNaN(numValue)) {
-        alert('Por favor, digite um valor numérico válido para Juros Poupança');
-        return;
-      }
-      processedValue = numValue / 100;
-      newData[activeTab][rowIndex][field] = processedValue;
-      recalculateFromParcela(newData, activeTab, rowIndex);
-    } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
-      newData[activeTab][rowIndex][field] = processedValue;
-    } else {
-      newData[activeTab][rowIndex][field] = processedValue;
+    if (field === 'jurosPoupanca' || field === 'jurosTotal' || field === 'jurosValor' || 
+        field === 'parcelaSemJuros' || field === 'parcelaComJuros' || field === 'valorPago') {
+      newValue = parseFloat(editValue) || 0;
     }
     
-    setData(newData);
+    parcelas[rowIndex] = {
+      ...parcelas[rowIndex],
+      [field]: newValue
+    };
+    
+    // Se alterou juros poupança, recalcular juros total e valor dos juros
+    if (field === 'jurosPoupanca') {
+      const parcela = parcelas[rowIndex];
+      parcela.jurosTotal = newValue + 0.005; // 0.5% fixo + juros poupança
+      parcela.jurosValor = parcela.parcelaSemJuros * parcela.jurosTotal;
+      parcela.parcelaComJuros = parcela.parcelaSemJuros + parcela.jurosValor;
+    }
+    
+    updatedData[activeTab] = parcelas;
+    setData(updatedData);
     setEditingCell(null);
     setEditValue('');
-    console.log('✅ Dados salvos com sucesso!');
+    
+    console.log(`✅ Parcela ${parcelas[rowIndex].parcela} atualizada:`, field, '→', newValue);
+  };
+
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditValue('');
   };
 
   // ============================================
-  // 🎨 FORMATAÇÃO
+  // 🔍 FILTRO E BUSCA
   // ============================================
-  const formatCurrency = (value: number) => {
+  const filteredData = data[activeTab]?.filter(parcela => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      parcela.parcela.toString().includes(searchLower) ||
+      parcela.situacao.toLowerCase().includes(searchLower) ||
+      parcela.dataVencimento.includes(searchTerm) ||
+      parcela.dataEnvioBoleto.includes(searchTerm)
+    );
+  }) || [];
+
+  // ============================================
+  // 🎨 FUNÇÕES DE FORMATAÇÃO
+  // ============================================
+  const formatCurrency = (value: number | null): string => {
+    if (value === null || value === undefined) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
   };
 
-  const formatPercentage = (value: number) => {
-    return `${(value * 100).toFixed(4)}%`;
+  const formatPercentage = (value: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'percent',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(value);
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR');
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return dateString;
+    }
   };
 
-  const getSituacaoColor = (situacao: string) => {
+  const getSituacaoColor = (situacao: string): string => {
     switch (situacao) {
-      case 'Pago': return 'bg-green-100 text-green-800';
-      case 'À Vencer': return 'bg-blue-100 text-blue-800';
-      case 'Vencida': return 'bg-red-100 text-red-800';
-      case 'Cancelada': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'Pago': return 'bg-green-100 text-green-800 border-green-200';
+      case 'À Vencer': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Vencida': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Cancelada': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   // ============================================
-  // 🎯 RENDER
+  // 📊 CALCULAR ESTATÍSTICAS
   // ============================================
+  const stats = React.useMemo(() => {
+    const currentData = data[activeTab] || [];
+    return {
+      total: currentData.length,
+      pagas: currentData.filter(p => p.situacao === 'Pago').length,
+      aVencer: currentData.filter(p => p.situacao === 'À Vencer').length,
+      vencidas: currentData.filter(p => p.situacao === 'Vencida').length,
+      valorTotal: currentData.reduce((sum, p) => sum + p.parcelaComJuros, 0),
+      valorPago: currentData.filter(p => p.valorPago !== null).reduce((sum, p) => sum + (p.valorPago || 0), 0),
+      totalJuros: currentData.reduce((sum, p) => sum + p.jurosValor, 0),
+      percentualPago: currentData.length > 0 ? Math.round((currentData.filter(p => p.situacao === 'Pago').length / currentData.length) * 100) : 0
+    };
+  }, [data, activeTab]);
+
+  // ============================================
+  // 🖊️ RENDERIZAR CAMPO EDITÁVEL
+  // ============================================
+  const renderEditableCell = (value: any, rowIndex: number, field: keyof Parcela) => {
+    const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.field === field;
+    const isEditableField = ['jurosPoupanca', 'dataEnvioBoleto', 'dataVencimento', 'situacao'].includes(field);
+    
+    if (!isEditableField) {
+      return <span>{value}</span>;
+    }
+
+    if (isEditing) {
+      if (field === 'situacao') {
+        return (
+          <div className="flex items-center space-x-2">
+            <select
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            >
+              <option value="Pago">Pago</option>
+              <option value="À Vencer">À Vencer</option>
+              <option value="Vencida">Vencida</option>
+              <option value="Cancelada">Cancelada</option>
+            </select>
+            <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
+              <Check size={16} />
+            </button>
+            <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
+              <X size={16} />
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center space-x-2">
+          <input
+            type={field.includes('data') ? 'date' : field === 'jurosPoupanca' ? 'number' : 'text'}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+            style={{ width: field.includes('data') ? '140px' : '100px' }}
+            step={field === 'jurosPoupanca' ? '0.000001' : undefined}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveEdit();
+              if (e.key === 'Escape') cancelEditing();
+            }}
+          />
+          <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
+            <Check size={16} />
+          </button>
+          <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
+            <X size={16} />
+          </button>
+        </div>
+      );
+    }
+
+    // Renderização normal com botão de edição
+    return (
+      <div className="group flex items-center justify-between">
+        <span className={
+          field === 'jurosPoupanca' ? 'text-orange-600 font-medium' :
+          field === 'situacao' ? `px-2 py-1 rounded-full text-xs font-medium ${getSituacaoColor(value)}` :
+          'text-gray-900'
+        }>
+          {field === 'jurosPoupanca' ? formatPercentage(value) :
+           field.includes('data') ? formatDate(value) :
+           value}
+        </span>
+        <button
+          onClick={() => startEditing(rowIndex, field, value)}
+          className="opacity-0 group-hover:opacity-100 text-blue-600 hover:text-blue-800 ml-2"
+        >
+          <Edit2 size={14} />
+        </button>
+      </div>
+    );
+  };
+
+  // ============================================
+  // 🖨️ GERAR RECIBO
+  // ============================================
+  const generateReceipt = (parcela: Parcela) => {
+    console.log('📄 Gerando recibo para parcela:', parcela.parcela);
+    // Implementar geração de PDF aqui
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-xl font-semibold text-gray-700">Carregando dados da Ively e Renato...</p>
-          <p className="text-sm text-gray-500">Aguarde enquanto carregamos todas as 144 parcelas</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando dados...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-80' : 'w-16'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
-        <div className="p-6 border-b">
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-white shadow-lg transition-all duration-300 flex-shrink-0`}>
+        <div className="p-4">
           <div className="flex items-center justify-between">
-            <h1 className={`${sidebarOpen ? 'block' : 'hidden'} text-2xl font-bold text-gray-900`}>
+            <h1 className={`font-bold text-xl text-gray-800 ${!sidebarOpen && 'hidden'}`}>
               JN Finanças
             </h1>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100"
             >
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              <Menu size={20} />
             </button>
           </div>
-          <p className={`${sidebarOpen ? 'block' : 'hidden'} text-sm text-gray-600 mt-2`}>
-            Sistema de Controle Financeiro
-          </p>
         </div>
 
-        <nav className="flex-1 p-4">
-          <div className="space-y-2">
-            {(['ively', 'renato'] as TabType[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full flex items-center p-3 rounded-lg transition-colors ${
-                  activeTab === tab
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <Home size={20} className="flex-shrink-0" />
-                {sidebarOpen && (
-                  <div className="ml-3 text-left">
-                    <div className="font-medium capitalize">
-                      {tab === 'ively' ? 'Ively 14(A)' : 'Renato 14(B)'}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {data[tab].length} parcelas
-                    </div>
-                  </div>
-                )}
-              </button>
-            ))}
+        <nav className="mt-8">
+          <div className="px-4 space-y-2">
+            <button
+              onClick={() => setActiveTab('ively')}
+              className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'ively' 
+                  ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Home className="mr-3" size={20} />
+              {sidebarOpen && (
+                <div>
+                  <div className="font-medium">Ively</div>
+                  <div className="text-xs text-gray-500">Apto 14(A)</div>
+                </div>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('renato')}
+              className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'renato' 
+                  ? 'bg-green-100 text-green-700 border-l-4 border-green-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Home className="mr-3" size={20} />
+              {sidebarOpen && (
+                <div>
+                  <div className="font-medium">Renato</div>
+                  <div className="text-xs text-gray-500">Apto 14(B)</div>
+                </div>
+              )}
+            </button>
           </div>
         </nav>
-
-        <div className="p-4 border-t">
-          <p className={`${sidebarOpen ? 'block' : 'hidden'} text-xs text-gray-500 text-center`}>
-            Dados carregados: {data.ively.length + data.renato.length} parcelas totais
-          </p>
-        </div>
       </div>
 
       {/* Conteúdo Principal */}
       <div className="flex-1 overflow-hidden">
         {/* Header */}
         <div className="bg-white shadow-sm border-b p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 space-y-4 lg:space-y-0">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 capitalize">
-                Imóvel {activeTab === 'ively' ? '14(A) Ively' : '14(B) Renato'}
+              <h2 className="text-2xl font-bold text-gray-900">
+                {activeTab === 'ively' ? 'Ively - Apartamento 14(A)' : 'Renato - Apartamento 14(B)'}
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                ✅ Dados completos carregados - {stats.total} parcelas de 144 disponíveis
+              <p className="text-gray-600 mt-1">
+                RESIDENCIAL OLYMPO - {stats.total} parcelas ({stats.percentualPago}% concluído)
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+
+            <div className="flex items-center space-x-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Buscar parcela, valor ou situação..."
+                  placeholder="Buscar parcela..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-80"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                onClick={() => alert('🔄 Integração Firebase em desenvolvimento')}
-              >
-                <Save size={16} className="mr-2" />
-                Salvar
-              </button>
-              <button 
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
-                onClick={() => alert('📊 Exportação Excel/PDF em desenvolvimento')}
-              >
+              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 <Download size={16} className="mr-2" />
                 Exportar
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Dashboard Cards */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center">
-                <FileText className="h-8 w-8 text-blue-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-blue-600">Total de Parcelas</p>
-                  <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
+                <FileText className="text-blue-600 mr-3" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-xl font-bold text-blue-600">{stats.total}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <div className="flex items-center">
-                <Check className="h-8 w-8 text-green-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-green-600">Parcelas Pagas</p>
-                  <p className="text-2xl font-bold text-green-900">{stats.pagas}</p>
-                  <p className="text-xs text-green-600">{stats.percentualPago}% concluído</p>
+                <FileText className="text-green-600 mr-3" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">Pagas</p>
+                  <p className="text-xl font-bold text-green-600">{stats.pagas}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <div className="flex items-center">
-                <Calendar className="h-8 w-8 text-yellow-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-yellow-600">À Vencer</p>
-                  <p className="text-2xl font-bold text-yellow-900">{stats.aVencer}</p>
+                <FileText className="text-yellow-600 mr-3" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">À Vencer</p>
+                  <p className="text-xl font-bold text-yellow-600">{stats.aVencer}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
               <div className="flex items-center">
-                <X className="h-8 w-8 text-red-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-red-600">Vencidas</p>
-                  <p className="text-2xl font-bold text-red-900">{stats.vencidas}</p>
+                <FileText className="text-red-600 mr-3" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">Vencidas</p>
+                  <p className="text-xl font-bold text-red-600">{stats.vencidas}</p>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Cards de Valores */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-purple-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-purple-600">Valor Total</p>
-                  <p className="text-xl font-bold text-purple-900">{formatCurrency(stats.valorTotal)}</p>
+                <DollarSign className="text-purple-600 mr-3" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-lg font-bold text-purple-600">{formatCurrency(stats.valorTotal)}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
               <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-emerald-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-emerald-600">Valor Pago</p>
-                  <p className="text-xl font-bold text-emerald-900">{formatCurrency(stats.valorPago)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-              <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-orange-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-orange-600">Valor Restante</p>
-                  <p className="text-xl font-bold text-orange-900">{formatCurrency(stats.valorRestante)}</p>
+                <DollarSign className="text-emerald-600 mr-3" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">Pago</p>
+                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(stats.valorPago)}</p>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Tabela */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-6">
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Parcela
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Sem Juros
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Com Juros
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Valor Pago
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Juros %
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Vencimento
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Situação
-                      </th>
+          {/* Tabela */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Parcela
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sem Juros
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Com Juros
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor Pago
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Juros Poupança
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Juros Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor Juros
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Envio Boleto
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vencimento
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Situação
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredData.map((parcela, index) => (
+                    <tr key={parcela.parcela} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {parcela.parcela}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(parcela.parcelaSemJuros)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                        {formatCurrency(parcela.parcelaComJuros)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <span className={parcela.valorPago ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                          {formatCurrency(parcela.valorPago)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.jurosPoupanca, index, 'jurosPoupanca')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-700 font-medium">
+                        {formatPercentage(parcela.jurosTotal)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                        {formatCurrency(parcela.jurosValor)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.dataEnvioBoleto, index, 'dataEnvioBoleto')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.dataVencimento, index, 'dataVencimento')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {renderEditableCell(parcela.situacao, index, 'situacao')}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => generateReceipt(parcela)}
+                          className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md text-sm font-medium transition-all hover:shadow-md"
+                        >
+                          <FileText size={16} className="mr-1" />
+                          Recibo
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredData.map((parcela, index) => (
-                      <tr key={parcela.parcela} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {parcela.parcela}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(parcela.parcelaSemJuros)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                          {formatCurrency(parcela.parcelaComJuros)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {parcela.valorPago ? formatCurrency(parcela.valorPago) : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center">
-                            {editingCell?.rowIndex === index && editingCell?.field === 'jurosPoupanca' ? (
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="text"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                                  placeholder="0.0000"
-                                />
-                                <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
-                                  <Check size={16} />
-                                </button>
-                                <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
-                                  <X size={16} />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center space-x-2">
-                                <span>{formatPercentage(parcela.jurosPoupanca)}</span>
-                                <button
-                                  onClick={() => startEditing(index, 'jurosPoupanca')}
-                                  className="text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100"
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center">
-                            {editingCell?.rowIndex === index && editingCell?.field === 'dataVencimento' ? (
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="date"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                                />
-                                <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
-                                  <Check size={16} />
-                                </button>
-                                <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
-                                  <X size={16} />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center space-x-2">
-                                <span>{formatDate(parcela.dataVencimento)}</span>
-                                <button
-                                  onClick={() => startEditing(index, 'dataVencimento')}
-                                  className="text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100"
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {editingCell?.rowIndex === index && editingCell?.field === 'situacao' ? (
-                              <div className="flex items-center space-x-2">
-                                <select
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                                >
-                                  <option value="Pago">Pago</option>
-                                  <option value="À Vencer">À Vencer</option>
-                                  <option value="Vencida">Vencida</option>
-                                  <option value="Cancelada">Cancelada</option>
-                                </select>
-                                <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
-                                  <Check size={16} />
-                                </button>
-                                <button onClick={cancelEditing} className="text-red-600 hover:text-red-800">
-                                  <X size={16} />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSituacaoColor(parcela.situacao)}`}>
-                                  {parcela.situacao}
-                                </span>
-                                <button
-                                  onClick={() => startEditing(index, 'situacao')}
-                                  className="text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100"
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer da Tabela */}
+            <div className="bg-gray-50 px-6 py-3 border-t">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                <p className="text-sm text-gray-600">
+                  Mostrando {filteredData.length} de {data[activeTab]?.length || 0} parcelas
+                </p>
+                <div className="flex items-center space-x-4 text-sm">
+                  <span className="text-gray-600">
+                    Total a Receber: <span className="font-semibold text-blue-600">{formatCurrency(stats.valorTotal - stats.valorPago)}</span>
+                  </span>
+                </div>
               </div>
             </div>
-            
-            {filteredData.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Nenhuma parcela encontrada com os critérios de busca.</p>
-              </div>
-            )}
           </div>
+
+          {filteredData.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhuma parcela encontrada com os critérios de busca.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
