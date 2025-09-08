@@ -197,6 +197,7 @@ const JNFinancasSystem: React.FC = () => {
   };
 
   const cancelEditing = () => {
+    console.log('❌ Cancelando edição');
     setEditingCell(null);
     setEditValue('');
   };
