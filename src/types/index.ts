@@ -1,4 +1,3 @@
-
 export interface Parcela {
   parcela: number;
   parcelaSemJuros: number;

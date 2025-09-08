@@ -45,3 +45,37 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* Adicione este CSS no final do arquivo src/styles/globals.css */
+
+/* Fix para inputs de edição - forçar texto escuro */
+.edit-input {
+  background-color: white !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+}
+
+.edit-input:focus {
+  background-color: white !important;
+  color: #1f2937 !important;
+}
+
+.edit-input::placeholder {
+  color: #6b7280 !important;
+}
+
+.edit-select {
+  background-color: white !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+}
+
+.edit-select:focus {
+  background-color: white !important;
+  color: #1f2937 !important;
+}
+
+.edit-select option {
+  background-color: white !important;
+  color: #1f2937 !important;
+}
