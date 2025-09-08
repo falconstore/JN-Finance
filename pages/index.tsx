@@ -1,5 +1,5 @@
 import { Inter } from 'next/font/google'
-import JNFinancasSystem from '@/components/JNFinancasSystem'
+import JNFinancasSystem from '../components/JNFinancasSystem'
 
 const inter = Inter({ subsets: ['latin'] })
 
