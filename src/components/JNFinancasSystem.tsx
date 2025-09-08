@@ -1,6 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Mail, Edit2, Check, XIcon, Save } from 'lucide-react';
-import { Parcela, ImovelData, EditingCell, TabType } from '../types';
+import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save } from 'lucide-react';
+
+interface Parcela {
+  parcela: number;
+  parcelaSemJuros: number;
+  parcelaComJuros: number;
+  valorPago: number | null;
+  jurosPoupanca: number;
+  jurosTotal: number;
+  jurosValor: number;
+  dataEnvioBoleto: string;
+  dataVencimento: string;
+  situacao: 'Pago' | 'À Vencer' | 'Vencida' | 'Cancelada';
+}
+
+interface ImovelData {
+  ively: Parcela[];
+  renato: Parcela[];
+}
+
+interface EditingCell {
+  rowIndex: number;
+  field: keyof Parcela;
+}
+
+type TabType = 'ively' | 'renato';
 
 const JNFinancasSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('ively');
@@ -14,79 +38,79 @@ const JNFinancasSystem: React.FC = () => {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Dados de exemplo baseados na estrutura completa do Excel com cálculos corretos
+  // Dados corrigidos baseados na estrutura do Excel
   const sampleData: ImovelData = {
     ively: [
       {
         parcela: 1,
         parcelaSemJuros: 1493.06,
-        parcelaComJuros: 1506.07, // 1493.06 + (1493.06 × 0.008715)
+        parcelaComJuros: 1506.07,
         valorPago: 1506.07,
-        jurosPoupanca: 0.003715, // Juros da poupança variável
-        jurosTotal: 0.008715, // 0.5% + 0.3715% = 0.8715%
-        jurosValor: 13.01, // 1493.06 × 0.008715
-        dataEnvioBoleto: '2019-09-11',
-        dataVencimento: '2019-09-18',
+        jurosPoupanca: 0.003715, // 0.3715%
+        jurosTotal: 0.008715, // 0.5% + 0.3715%
+        jurosValor: 13.01,
+        dataEnvioBoleto: '2019-09-10',
+        dataVencimento: '2019-09-17',
         situacao: 'Pago'
       },
       {
         parcela: 2,
-        parcelaSemJuros: 1506.07, // Valor anterior com juros
-        parcelaComJuros: 1518.77, // 1506.07 + (1506.07 × 0.008434)
+        parcelaSemJuros: 1506.07,
+        parcelaComJuros: 1518.77,
         valorPago: 1518.77,
-        jurosPoupanca: 0.003434, // Juros da poupança do mês
-        jurosTotal: 0.008434, // 0.5% + 0.3434% = 0.8434%
-        jurosValor: 12.70, // 1506.07 × 0.008434
-        dataEnvioBoleto: '2019-10-21',
-        dataVencimento: '2019-10-27',
+        jurosPoupanca: 0.003434, // 0.3434%
+        jurosTotal: 0.008434, // 0.5% + 0.3434%
+        jurosValor: 12.70,
+        dataEnvioBoleto: '2019-10-20',
+        dataVencimento: '2019-10-26',
         situacao: 'Pago'
       },
       {
         parcela: 3,
-        parcelaSemJuros: 1518.77, // Valor anterior com juros
-        parcelaComJuros: 1531.58, // 1518.77 + (1518.77 × 0.008434)
+        parcelaSemJuros: 1518.77,
+        parcelaComJuros: 1531.58,
         valorPago: 1531.58,
         jurosPoupanca: 0.003434,
-        jurosTotal: 0.008434, // 0.5% + 0.3434% = 0.8434%
-        jurosValor: 12.81, // 1518.77 × 0.008434
-        dataEnvioBoleto: '2019-11-18',
-        dataVencimento: '2019-11-27',
+        jurosTotal: 0.008434,
+        jurosValor: 12.81,
+        dataEnvioBoleto: '2019-11-17',
+        dataVencimento: '2019-11-26',
         situacao: 'Pago'
       },
       {
         parcela: 4,
-        parcelaSemJuros: 1531.58, // Valor anterior com juros
-        parcelaComJuros: 1543.21, // 1531.58 + (1531.58 × 0.007588)
+        parcelaSemJuros: 1531.58,
+        parcelaComJuros: 1543.21,
         valorPago: null,
         jurosPoupanca: 0.002588,
-        jurosTotal: 0.007588, // 0.5% + 0.2588% = 0.7588%
-        jurosValor: 11.62, // 1531.58 × 0.007588
-        dataEnvioBoleto: '2019-12-16',
-        dataVencimento: '2019-12-27',
+        jurosTotal: 0.007588,
+        jurosValor: 11.62,
+        dataEnvioBoleto: '2019-12-15',
+        dataVencimento: '2019-12-26',
         situacao: 'À Vencer'
       },
       {
         parcela: 5,
-        parcelaSemJuros: 1543.21, // Valor anterior com juros
-        parcelaComJuros: 1555.89, // 1543.21 + (1543.21 × 0.007588)
+        parcelaSemJuros: 1543.21,
+        parcelaComJuros: 1555.89,
         valorPago: null,
         jurosPoupanca: 0.002588,
-        jurosTotal: 0.007588, // 0.5% + 0.2588% = 0.7588%
-        jurosValor: 12.68, // 1543.21 × 0.007588
-        dataEnvioBoleto: '2020-01-16',
-        dataVencimento: '2020-01-27',
+        jurosTotal: 0.007588,
+        jurosValor: 12.68,
+        dataEnvioBoleto: '2020-01-15',
+        dataVencimento: '2020-01-26',
         situacao: 'À Vencer'
       },
       {
         parcela: 6,
-        parcelaSemJuros: 1555.89, // Valor anterior com juros
-        parcelaComJuros: 1568.45, // 1555.89 + (1555.89 × 0.007588)
+        parcelaSemJuros: 1555.89,
+        parcelaComJuros: 1568.45,
         valorPago: null,
         jurosPoupanca: 0.002588,
-        jurosTotal: 0.007588, // 0.5% + 0.2588% = 0.7588%
-        jurosValor: 12.56, // 1555.89 × 0.007588
-        dataEnvioBoleto: '2020-02-16',
-        dataVencimento: '2020-02-27',
+        jurosTotal: 0.007588,
+        jurosValor: 12.56,
+        dataEnvioBoleto: '2020-02-15',
+        dataVencimento: '2020-02-26',
         situacao: 'Vencida'
       }
     ],
@@ -94,47 +118,47 @@ const JNFinancasSystem: React.FC = () => {
       {
         parcela: 1,
         parcelaSemJuros: 1618.05,
-        parcelaComJuros: 1632.15, // 1618.05 + (1618.05 × 0.008715)
+        parcelaComJuros: 1632.15,
         valorPago: 1632.15,
         jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715, // 0.5% + 0.3715% = 0.8715%
-        jurosValor: 14.10, // 1618.05 × 0.008715
+        jurosTotal: 0.008715,
+        jurosValor: 14.10,
         dataEnvioBoleto: '2019-08-15',
         dataVencimento: '2019-08-22',
         situacao: 'Pago'
       },
       {
         parcela: 2,
-        parcelaSemJuros: 1632.15, // Valor anterior com juros
-        parcelaComJuros: 1646.38, // 1632.15 + (1632.15 × 0.008715)
+        parcelaSemJuros: 1632.15,
+        parcelaComJuros: 1646.38,
         valorPago: 1646.38,
         jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715, // 0.5% + 0.3715% = 0.8715%
-        jurosValor: 14.22, // 1632.15 × 0.008715
+        jurosTotal: 0.008715,
+        jurosValor: 14.22,
         dataEnvioBoleto: '2019-09-17',
         dataVencimento: '2019-09-24',
         situacao: 'Pago'
       },
       {
         parcela: 3,
-        parcelaSemJuros: 1646.38, // Valor anterior com juros
-        parcelaComJuros: 1660.73, // 1646.38 + (1646.38 × 0.008715)
+        parcelaSemJuros: 1646.38,
+        parcelaComJuros: 1660.73,
         valorPago: null,
         jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715, // 0.5% + 0.3715% = 0.8715%
-        jurosValor: 14.35, // 1646.38 × 0.008715
+        jurosTotal: 0.008715,
+        jurosValor: 14.35,
         dataEnvioBoleto: '2019-10-17',
         dataVencimento: '2019-10-24',
         situacao: 'À Vencer'
       },
       {
         parcela: 4,
-        parcelaSemJuros: 1660.73, // Valor anterior com juros
-        parcelaComJuros: 1675.21, // 1660.73 + (1660.73 × 0.008715)
+        parcelaSemJuros: 1660.73,
+        parcelaComJuros: 1675.21,
         valorPago: null,
         jurosPoupanca: 0.003715,
-        jurosTotal: 0.008715, // 0.5% + 0.3715% = 0.8715%
-        jurosValor: 14.48, // 1660.73 × 0.008715
+        jurosTotal: 0.008715,
+        jurosValor: 14.48,
         dataEnvioBoleto: '2019-11-17',
         dataVencimento: '2019-11-24',
         situacao: 'Vencida'
@@ -143,136 +167,127 @@ const JNFinancasSystem: React.FC = () => {
   };
 
   useEffect(() => {
-    // Simular carregamento dos dados
-    setTimeout(() => {
+    console.log('🚀 Inicializando sistema JN Finanças...');
+    const timer = setTimeout(() => {
       setData(sampleData);
       setLoading(false);
+      console.log('✅ Dados carregados com sucesso!');
     }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
+  // Função para recalcular parcelas em cascata
   const recalculateFromParcela = (newData: ImovelData, tabName: TabType, startIndex: number) => {
+    console.log(`🔄 Recalculando parcelas a partir da ${startIndex + 1}...`);
     const parcelas = newData[tabName];
     
     for (let i = startIndex; i < parcelas.length; i++) {
       const currentParcela = parcelas[i];
       
-      // Se não é a primeira parcela, pega o valor com juros da parcela anterior
+      // Valor sem juros = valor com juros da parcela anterior
       if (i > 0) {
         currentParcela.parcelaSemJuros = parcelas[i - 1].parcelaComJuros;
       }
       
-      // Calcula juros total = 0.5% (fixo) + Juros Poupança
-      const juroFixo = 0.005; // 0.5%
-      const jurosPoupanca = currentParcela.jurosPoupanca || 0;
-      currentParcela.jurosTotal = juroFixo + jurosPoupanca;
+      // Juros total = 0.5% fixo + juros da poupança
+      const juroFixo = 0.005;
+      currentParcela.jurosTotal = juroFixo + (currentParcela.jurosPoupanca || 0);
       
-      // Calcula valor dos juros em reais
+      // Valor dos juros em reais
       currentParcela.jurosValor = currentParcela.parcelaSemJuros * currentParcela.jurosTotal;
       
-      // Calcula parcela com juros
+      // Parcela com juros = valor sem juros + valor dos juros
       currentParcela.parcelaComJuros = currentParcela.parcelaSemJuros + currentParcela.jurosValor;
       
-      // Debug para verificar
-      console.log(`Parcela ${currentParcela.parcela}:`, {
-        parcelaSemJuros: currentParcela.parcelaSemJuros,
-        jurosPoupanca: jurosPoupanca,
-        jurosTotal: currentParcela.jurosTotal,
-        jurosValor: currentParcela.jurosValor,
-        parcelaComJuros: currentParcela.parcelaComJuros
-      });
+      console.log(`  Parcela ${currentParcela.parcela}: ${formatCurrency(currentParcela.parcelaComJuros)}`);
     }
   };
 
+  // Iniciar edição de célula
   const startEditing = (rowIndex: number, field: keyof Parcela, currentValue: any) => {
+    console.log(`✏️ Editando: Parcela ${rowIndex + 1}, Campo: ${field}`);
     setEditingCell({ rowIndex, field });
     
-    // Formatar o valor inicial baseado no tipo de campo
+    // Formatar valor baseado no tipo
     if (field === 'jurosPoupanca') {
-      setEditValue((currentValue * 100).toFixed(4)); // Converter para percentual
+      setEditValue(currentValue ? (currentValue * 100).toFixed(4) : '0.0000');
     } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
       setEditValue(currentValue || '');
     } else {
-      setEditValue(currentValue || '');
+      setEditValue(currentValue?.toString() || '');
     }
   };
 
+  // Cancelar edição
   const cancelEditing = () => {
-    console.log('❌ Cancelando edição');
+    console.log('❌ Edição cancelada');
     setEditingCell(null);
     setEditValue('');
   };
 
+  // Salvar edição
   const saveEdit = () => {
     if (!editingCell) return;
     
-    console.log('Salvando edição:', editingCell, 'valor:', editValue);
-    
     const { rowIndex, field } = editingCell;
-    const newData = JSON.parse(JSON.stringify(data)); // Deep clone para garantir re-render
+    console.log(`💾 Salvando: Parcela ${rowIndex + 1}, ${field} = "${editValue}"`);
     
-    // Processar o valor baseado no tipo de campo
+    // Criar cópia profunda dos dados
+    const newData = JSON.parse(JSON.stringify(data)) as ImovelData;
+    
     let processedValue: any = editValue;
     
+    // Processar valor baseado no tipo de campo
     if (field === 'jurosPoupanca') {
-      // Converter de percentual para decimal
       const numValue = parseFloat(editValue);
       if (isNaN(numValue)) {
-        alert('Por favor, digite um número válido para Juros Poupança');
+        alert('Por favor, digite um valor numérico válido para Juros Poupança');
         return;
       }
-      processedValue = numValue / 100;
-      
-      console.log(`Alterando Juros Poupança da parcela ${rowIndex + 1} de ${newData[activeTab][rowIndex][field]} para ${processedValue}`);
-      
-      // Atualizar o valor
+      processedValue = numValue / 100; // Converter % para decimal
       newData[activeTab][rowIndex][field] = processedValue;
       
-      // Recalcular todas as parcelas a partir desta
-      console.log('Iniciando recálculo automático...');
+      // Recalcular todas as parcelas seguintes
       recalculateFromParcela(newData, activeTab, rowIndex);
       
     } else if (field === 'dataEnvioBoleto' || field === 'dataVencimento') {
-      // Para datas, manter como string
-      processedValue = editValue;
       newData[activeTab][rowIndex][field] = processedValue;
     } else {
-      // Para outros campos como situação
       newData[activeTab][rowIndex][field] = processedValue;
     }
-    
-    console.log('Dados atualizados:', newData[activeTab][rowIndex]);
     
     setData(newData);
     setEditingCell(null);
     setEditValue('');
     
-    // Aqui você salvaria no Firebase
-    console.log(`✅ Salvando alteração: ${field} = ${processedValue} para parcela ${newData[activeTab][rowIndex].parcela}`);
-    
-    if (field === 'jurosPoupanca') {
-      console.log('🔄 Recálculo automático realizado para todas as parcelas seguintes!');
-    }
+    console.log('✅ Dados salvos com sucesso!');
   };
 
+  // Gerar recibo
   const generateReceipt = (parcela: Parcela) => {
-    alert(`Gerando recibo para parcela ${parcela.parcela} - Valor: R$ ${parcela.parcelaComJuros.toFixed(2)}`);
-    // Aqui você implementará a geração do recibo
+    alert(`📄 Gerando recibo para parcela ${parcela.parcela}\nValor: ${formatCurrency(parcela.parcelaComJuros)}`);
   };
 
+  // Filtrar dados baseado na busca
   const filteredData = data[activeTab]?.filter(item => 
     item.parcela.toString().includes(searchTerm) ||
-    item.situacao.toLowerCase().includes(searchTerm.toLowerCase())
+    item.situacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    formatCurrency(item.parcelaComJuros).includes(searchTerm)
   ) || [];
 
+  // Cores para status
   const getStatusColor = (situacao: string) => {
     switch (situacao) {
       case 'Pago': return 'bg-green-100 text-green-800 border-green-200';
       case 'À Vencer': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Vencida': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Cancelada': return 'bg-gray-100 text-gray-800 border-gray-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
+  // Formatação de moeda
   const formatCurrency = (value: number | null) => {
     if (value === null || value === undefined) return '-';
     return new Intl.NumberFormat('pt-BR', {
@@ -281,27 +296,31 @@ const JNFinancasSystem: React.FC = () => {
     }).format(value);
   };
 
+  // Formatação de percentual
   const formatPercentage = (value: number | null) => {
     if (value === null || value === undefined) return '-';
     return `${(value * 100).toFixed(4)}%`;
   };
 
+  // Formatação de data
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR');
   };
 
-  const renderEditableCell = (value: any, rowIndex: number, field: keyof Parcela, type: string = 'text') => {
+  // Renderizar célula editável
+  const renderEditableCell = (value: any, rowIndex: number, field: keyof Parcela) => {
     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.field === field;
     
     if (isEditing) {
       return (
-        <div className="flex items-center space-x-1">
-          {type === 'select' ? (
+        <div className="flex items-center space-x-2">
+          {field === 'situacao' ? (
             <select
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-2 focus:ring-blue-500 min-w-[100px]"
               autoFocus
             >
               <option value="Pago">Pago</option>
@@ -311,10 +330,15 @@ const JNFinancasSystem: React.FC = () => {
             </select>
           ) : (
             <input
-              type={type}
+              type={field.includes('data') ? 'date' : 'text'}
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              className="px-2 py-1 border border-blue-300 rounded text-xs w-24 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="px-2 py-1 border border-blue-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
+              style={{ 
+                minWidth: field === 'jurosPoupanca' ? '100px' : 
+                          field.includes('data') ? '130px' : '80px' 
+              }}
+              placeholder={field === 'jurosPoupanca' ? 'Ex: 0.3715' : ''}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveEdit();
@@ -325,14 +349,14 @@ const JNFinancasSystem: React.FC = () => {
           <button
             onClick={saveEdit}
             className="p-1 text-green-600 hover:bg-green-100 rounded"
-            title="Salvar"
+            title="Salvar (Enter)"
           >
             <Check size={14} />
           </button>
           <button
             onClick={cancelEditing}
             className="p-1 text-red-600 hover:bg-red-100 rounded"
-            title="Cancelar"
+            title="Cancelar (Esc)"
           >
             <X size={14} />
           </button>
@@ -340,21 +364,32 @@ const JNFinancasSystem: React.FC = () => {
       );
     }
 
+    // Renderização normal
+    const displayValue = (() => {
+      switch (field) {
+        case 'jurosPoupanca':
+          return <span className="text-orange-600 font-medium">{formatPercentage(value)}</span>;
+        case 'dataEnvioBoleto':
+        case 'dataVencimento':
+          return <span className="flex items-center"><Calendar size={12} className="mr-1 text-gray-400" />{formatDate(value)}</span>;
+        case 'situacao':
+          return (
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(value)}`}>
+              {value}
+            </span>
+          );
+        default:
+          return value;
+      }
+    })();
+
     return (
       <div className="flex items-center justify-between group">
-        <span className={field === 'jurosPoupanca' ? 'text-orange-600 font-medium' : ''}>
-          {field === 'jurosPoupanca' ? formatPercentage(value) :
-           field === 'dataEnvioBoleto' || field === 'dataVencimento' ? formatDate(value) :
-           field === 'situacao' ? (
-             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(value)}`}>
-               {value}
-             </span>
-           ) : value}
-        </span>
+        <div className="flex-1">{displayValue}</div>
         <button
           onClick={() => startEditing(rowIndex, field, value)}
           className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:bg-blue-100 rounded transition-opacity"
-          title="Editar"
+          title={`Editar ${field}`}
         >
           <Edit2 size={12} />
         </button>
@@ -362,6 +397,7 @@ const JNFinancasSystem: React.FC = () => {
     );
   };
 
+  // Calcular estatísticas
   const stats = {
     total: filteredData.length,
     pago: filteredData.filter(item => item.situacao === 'Pago').length,
@@ -375,7 +411,7 @@ const JNFinancasSystem: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-blue-900 text-white transition-all duration-300 flex flex-col`}>
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-blue-900 text-white transition-all duration-300 flex flex-col flex-shrink-0`}>
         <div className="p-4 border-b border-blue-800">
           <div className="flex items-center justify-between">
             {sidebarOpen && (
@@ -383,7 +419,7 @@ const JNFinancasSystem: React.FC = () => {
             )}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-blue-800 rounded"
+              className="p-2 hover:bg-blue-800 rounded transition-colors"
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -430,12 +466,12 @@ const JNFinancasSystem: React.FC = () => {
 
         <div className="p-4 border-t border-blue-800">
           <p className="text-xs text-blue-300">
-            {sidebarOpen ? 'Sistema de Controle de Imóveis' : 'JN'}
+            {sidebarOpen ? 'Sistema de Controle Financeiro' : 'JN'}
           </p>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Conteúdo Principal */}
       <div className="flex-1 overflow-hidden">
         {/* Header */}
         <div className="bg-white shadow-sm border-b p-6">
@@ -445,7 +481,7 @@ const JNFinancasSystem: React.FC = () => {
                 Imóvel {activeTab === 'ively' ? '14(A) Ively' : '14(B) Renato'}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Clique no ícone de edição para modificar: Juros Poupança, Data Envio Boleto, Data Vencimento e Situação
+                Sistema funcionando em memória - Clique nos ícones de edição para modificar dados
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -453,24 +489,30 @@ const JNFinancasSystem: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Buscar parcela ou situação..."
+                  placeholder="Buscar parcela, valor ou situação..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-80"
                 />
               </div>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+              <button 
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                onClick={() => alert('🔄 Sincronização com Firebase em desenvolvimento')}
+              >
                 <Save size={16} className="mr-2" />
-                Salvar Alterações
+                Salvar
               </button>
-              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
+              <button 
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                onClick={() => alert('📊 Exportação em desenvolvimento')}
+              >
                 <Download size={16} className="mr-2" />
                 Exportar
               </button>
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Cards de Estatísticas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center">
@@ -544,7 +586,7 @@ const JNFinancasSystem: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Tabela */}
         <div className="p-6 overflow-auto">
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -576,23 +618,20 @@ const JNFinancasSystem: React.FC = () => {
                         </div>
                       </th>
                       <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        <div className="flex items-center">
-                          Juros Total % 
-                          <span className="ml-1 text-blue-200 text-xs">(0.5% + Poupança)</span>
-                        </div>
+                        Juros Total %
                       </th>
                       <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
-                        Juros Total
+                        Juros Total R$
                       </th>
                       <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
                         <div className="flex items-center">
-                          Data Envio Boleto
+                          Data Envio
                           <Edit2 size={12} className="ml-1 text-blue-200" />
                         </div>
                       </th>
                       <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider">
                         <div className="flex items-center">
-                          Data Vencimento
+                          Vencimento
                           <Edit2 size={12} className="ml-1 text-blue-200" />
                         </div>
                       </th>
@@ -609,7 +648,7 @@ const JNFinancasSystem: React.FC = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredData.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
+                      <tr key={`${activeTab}-${item.parcela}`} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">
                             #{item.parcela}
@@ -627,7 +666,7 @@ const JNFinancasSystem: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.jurosPoupanca, index, 'jurosPoupanca', 'number')}
+                          {renderEditableCell(item.jurosPoupanca, index, 'jurosPoupanca')}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-700 font-medium">
                           {formatPercentage(item.jurosTotal)}
@@ -636,13 +675,13 @@ const JNFinancasSystem: React.FC = () => {
                           {formatCurrency(item.jurosValor)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.dataEnvioBoleto, index, 'dataEnvioBoleto', 'date')}
+                          {renderEditableCell(item.dataEnvioBoleto, index, 'dataEnvioBoleto')}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.dataVencimento, index, 'dataVencimento', 'date')}
+                          {renderEditableCell(item.dataVencimento, index, 'dataVencimento')}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          {renderEditableCell(item.situacao, index, 'situacao', 'select')}
+                          {renderEditableCell(item.situacao, index, 'situacao')}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                           <button
@@ -659,15 +698,15 @@ const JNFinancasSystem: React.FC = () => {
                 </table>
               </div>
               
-              {/* Table Footer */}
+              {/* Footer da Tabela */}
               <div className="bg-gray-50 px-6 py-3 border-t">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600">
-                    Mostrando {filteredData.length} parcelas de {data[activeTab]?.length || 0}
+                    Mostrando {filteredData.length} de {data[activeTab]?.length || 0} parcelas
                   </p>
                   <div className="flex items-center space-x-4 text-sm">
                     <span className="text-gray-600">
-                      Total a Receber: <span className="font-semibold text-blue-600">{formatCurrency(stats.totalValor - stats.totalPago)}</span>
+                      A Receber: <span className="font-semibold text-blue-600">{formatCurrency(stats.totalValor - stats.totalPago)}</span>
                     </span>
                   </div>
                 </div>
