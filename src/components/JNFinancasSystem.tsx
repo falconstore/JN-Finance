@@ -548,6 +548,109 @@ const downloadReceiptPDF = async () => {
     console.error('Erro ao gerar PDF:', error);
     alert('Erro ao gerar PDF. Instale jsPDF: npm install jspdf');
   }
+};
+
+// ============================================
+// 📄 PDF TAMBÉM COMPACTO PARA A4
+// ============================================
+const downloadReceiptPDF = async () => {
+  if (!selectedParcela) return;
+
+  try {
+    const jsPDF = require('jspdf').jsPDF;
+    const doc = new jsPDF();
+    
+    const imovelInfo = imoveisInfo[activeTab];
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    
+    // Função para converter valor em extenso (simplificada)
+    const valorPorExtenso = (valor: number): string => {
+      const milhares = Math.floor(valor / 1000);
+      const centavos = Math.round((valor - Math.floor(valor)) * 100);
+      
+      if (valor >= 1000) {
+        return `${milhares} mil ${Math.floor(valor % 1000) > 0 ? 'e ' + Math.floor(valor % 1000) + ' ' : ''}reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
+      }
+      return `${Math.floor(valor)} reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
+    };
+    
+    // Configurações da página - MAIS COMPACTO
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const marginLeft = 25;
+    const marginRight = 25;
+    const contentWidth = pageWidth - marginLeft - marginRight;
+    let currentY = 40; // Começar mais próximo do topo
+    
+    // TÍTULO - RECIBO
+    doc.setFontSize(18); // Menor
+    doc.setFont('helvetica', 'bold');
+    const title = 'RECIBO';
+    const titleWidth = doc.getTextWidth(title);
+    doc.text(title, (pageWidth - titleWidth) / 2, currentY);
+    currentY += 25; // Espaço menor
+    
+    // Texto do recibo
+    doc.setFontSize(11); // Fonte menor
+    doc.setFont('helvetica', 'normal');
+    
+    // Quebrar o texto em linhas
+    const valorTotal = selectedParcela.valorPago || selectedParcela.parcelaComJuros;
+    const valorExtenso = valorPorExtenso(valorTotal);
+    
+    // Calcular parcelas restantes
+    const parcelasRestantes = imovelInfo.totalParcelas - selectedParcela.parcela;
+    
+    const texto = `Pelo presente, eu ${imovelInfo.recebedor.nome}, inscrito no CPF sob nº ${imovelInfo.recebedor.cpf}, declaro que RECEBI na data de hoje, o valor de ${formatCurrency(valorTotal)}, ${valorExtenso}, por meio de PIX, de ${imovelInfo.pagador.nome}, inscrito no CPF sob nº ${imovelInfo.pagador.cpf}, referente à parcela ${selectedParcela.parcela} de ${imovelInfo.totalParcelas} referente ao imóvel denominado ${imovelInfo.imovel} do ${imovelInfo.bloco}, localizado no ${imovelInfo.andar} do ${imovelInfo.condominio}.`;
+    
+    // Quebrar texto em linhas de acordo com a largura
+    const linhas = doc.splitTextToSize(texto, contentWidth);
+    
+    // Imprimir o texto principal com espaçamento menor
+    linhas.forEach((linha: string) => {
+      doc.text(linha, marginLeft, currentY);
+      currentY += 6; // Espaçamento menor entre linhas
+    });
+    
+    currentY += 10; // Espaço menor
+    
+    // Declaração de parcelas restantes
+    const textoRestantes = `Declaro que ainda restam pendentes ${parcelasRestantes} parcelas.`;
+    doc.text(textoRestantes, marginLeft, currentY);
+    currentY += 15; // Espaço menor
+    
+    // Expressão de verdade
+    const textoVerdade = `Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.`;
+    doc.text(textoVerdade, marginLeft, currentY);
+    currentY += 25; // Espaço menor
+    
+    // Data e local
+    const dataLocal = `Guarujá, ${hoje}.`;
+    const dataLocalWidth = doc.getTextWidth(dataLocal);
+    doc.text(dataLocal, (pageWidth - dataLocalWidth) / 2, currentY);
+    currentY += 35; // Espaço menor
+    
+    // Assinatura
+    doc.setFont('helvetica', 'normal');
+    const nomeRecebedor = imovelInfo.recebedor.nome;
+    const nomeWidth = doc.getTextWidth(nomeRecebedor);
+    
+    // Linha para assinatura - menor
+    const linhaAssinatura = 80;
+    const startX = (pageWidth - linhaAssinatura) / 2;
+    doc.line(startX, currentY, startX + linhaAssinatura, currentY);
+    
+    // Nome do recebedor abaixo da linha
+    doc.text(nomeRecebedor, (pageWidth - nomeWidth) / 2, currentY + 8);
+    
+    // Salvar o PDF
+    const fileName = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
+    doc.save(fileName);
+    
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error);
+    alert('Erro ao gerar PDF. Instale jsPDF: npm install jspdf');
+  }
 
   // ============================================
   // 📄 GERAR PDF REAL - USANDO jsPDF
