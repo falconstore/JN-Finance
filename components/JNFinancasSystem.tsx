@@ -1,124 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Download, Calendar, DollarSign, Home, Plus, Menu, X, Percent, Edit2, Check, Save, Printer } from 'lucide-react';
-
-// Para usar em produção, instale: npm install jspdf
-// import jsPDF from 'jspdf';
-
-// Tipos (simulando as importações)
-interface Parcela {
-  parcela: number;
-  parcelaSemJuros: number;
-  parcelaComJuros: number;
-  valorPago: number | null;
-  jurosPoupanca: number;
-  jurosTotal: number;
-  jurosValor: number;
-  dataEnvioBoleto: string;
-  dataVencimento: string;
-  situacao: 'Pago' | 'À Vencer' | 'Vencida' | 'Cancelada';
-}
-
-interface ImovelData {
-  ively: Parcela[];
-  renato: Parcela[];
-}
-
-type TabType = 'ively' | 'renato';
-
-interface EditingCell {
-  rowIndex: number;
-  field: keyof Parcela;
-}
-
-// Dados de exemplo (simulando as importações)
-const sampleDatabase: ImovelData = {
-  ively: [
-    {
-      parcela: 1,
-      parcelaSemJuros: 1493.06,
-      parcelaComJuros: 1506.07,
-      valorPago: 1506.07,
-      jurosPoupanca: 0.003715,
-      jurosTotal: 0.008715,
-      jurosValor: 13.01,
-      dataEnvioBoleto: '2019-09-11',
-      dataVencimento: '2019-09-18',
-      situacao: 'Pago'
-    },
-    {
-      parcela: 2,
-      parcelaSemJuros: 1506.07,
-      parcelaComJuros: 1518.77,
-      valorPago: 1518.77,
-      jurosPoupanca: 0.003434,
-      jurosTotal: 0.008434,
-      jurosValor: 12.70,
-      dataEnvioBoleto: '2019-10-21',
-      dataVencimento: '2019-10-27',
-      situacao: 'Pago'
-    }
-  ],
-  renato: [
-    {
-      parcela: 1,
-      parcelaSemJuros: 1618.05,
-      parcelaComJuros: 1632.15,
-      valorPago: 1632.15,
-      jurosPoupanca: 0.003715,
-      jurosTotal: 0.008715,
-      jurosValor: 14.10,
-      dataEnvioBoleto: '2019-08-15',
-      dataVencimento: '2019-08-21',
-      situacao: 'Pago'
-    }
-  ]
-};
-
-const imoveisInfo = {
-  ively: {
-    nome: 'Ively',
-    imovel: 'Apartamento nº 14(A)',
-    bloco: 'Bloco A',
-    andar: '1º andar',
-    condominio: 'RESIDENCIAL OLYMPO',
-    recebedor: {
-      nome: 'Jhonatan da Silva',
-      cpf: '438.358.908-16'
-    },
-    pagador: {
-      nome: 'Vanderlei Roberto Conceição',
-      cpf: '028.821.198-79'
-    },
-    totalParcelas: 144
-  },
-  renato: {
-    nome: 'Renato',
-    imovel: 'Apartamento nº 14(B)',
-    bloco: 'Bloco A',
-    andar: '1º andar',
-    condominio: 'RESIDENCIAL OLYMPO',
-    recebedor: {
-      nome: 'Jhonatan da Silva',
-      cpf: '438.358.908-16'
-    },
-    pagador: {
-      nome: 'Vanderlei Roberto Conceição',
-      cpf: '028.821.198-79'
-    },
-    totalParcelas: 144
-  }
-};
+import { Parcela, ImovelData, EditingCell, TabType } from '../types';
+import { database, imoveisInfo, getEstatisticas } from '../data';
 
 const JNFinancasSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('ively');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [data, setData] = useState<ImovelData>(sampleDatabase);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<ImovelData>({
+    ively: [],
+    renato: []
+  });
+  const [loading, setLoading] = useState(true);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedParcela, setSelectedParcela] = useState<Parcela | null>(null);
+
+  // ============================================
+  // 🔄 CARREGAMENTO DOS DADOS COMPLETOS
+  // ============================================
+  useEffect(() => {
+    console.log('🚀 Carregando dados completos da Ively e Renato...');
+    
+    try {
+      console.log('📊 Dados Ively:', database.ively.length, 'parcelas');
+      console.log('📊 Dados Renato:', database.renato.length, 'parcelas');
+      
+      setData({
+        ively: database.ively,
+        renato: database.renato
+      });
+      
+      setLoading(false);
+      console.log('✅ Dados carregados com sucesso!');
+      console.log('📈 Estatísticas Ively:', getEstatisticas('ively'));
+      console.log('📈 Estatísticas Renato:', getEstatisticas('renato'));
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados:', error);
+      setLoading(false);
+    }
+  }, []);
 
   // ============================================
   // 📝 FUNÇÕES DE EDIÇÃO
@@ -158,6 +81,8 @@ const JNFinancasSystem: React.FC = () => {
     setData(updatedData);
     setEditingCell(null);
     setEditValue('');
+    
+    console.log(`✅ Parcela ${parcelas[rowIndex].parcela} atualizada:`, field, '→', newValue);
   };
 
   const cancelEditing = () => {
@@ -319,622 +244,280 @@ const JNFinancasSystem: React.FC = () => {
   };
 
   // ============================================
-  // 🖨️ GERAR RECIBO - IMPLEMENTAÇÃO REAL
+  // 🖨️ GERAR RECIBO
   // ============================================
   const generateReceipt = (parcela: Parcela) => {
     setSelectedParcela(parcela);
     setShowReceiptModal(true);
   };
 
+  // ============================================
+  // 🖨️ IMPRESSÃO SIMPLIFICADA
+  // ============================================
   const printReceipt = () => {
-  const receiptWindow = window.open('', '_blank');
-  if (!receiptWindow || !selectedParcela) return;
+    const receiptWindow = window.open('', '_blank');
+    if (!receiptWindow || !selectedParcela) return;
 
-  const imovelInfo = imoveisInfo[activeTab];
-  const hoje = new Date().toLocaleDateString('pt-BR');
-  
-  // Função para converter valor em extenso (simplificada)
-  const valorPorExtenso = (valor: number): string => {
-    const milhares = Math.floor(valor / 1000);
-    const centavos = Math.round((valor - Math.floor(valor)) * 100);
+    const imovelInfo = imoveisInfo[activeTab];
+    const hoje = new Date().toLocaleDateString('pt-BR');
     
-    if (valor >= 1000) {
-      return `${milhares} mil ${Math.floor(valor % 1000) > 0 ? 'e ' + Math.floor(valor % 1000) + ' ' : ''}reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
-    }
-    return `${Math.floor(valor)} reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
-  };
+    const valorPorExtenso = (valor: number): string => {
+      const milhares = Math.floor(valor / 1000);
+      const centavos = Math.round((valor - Math.floor(valor)) * 100);
+      
+      if (valor >= 1000) {
+        return `${milhares} mil ${Math.floor(valor % 1000) > 0 ? 'e ' + Math.floor(valor % 1000) + ' ' : ''}reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
+      }
+      return `${Math.floor(valor)} reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
+    };
 
-  const valorTotal = selectedParcela.valorPago || selectedParcela.parcelaComJuros;
-  const valorExtenso = valorPorExtenso(valorTotal);
-  const parcelasRestantes = imovelInfo.totalParcelas - selectedParcela.parcela;
+    const valorRecebido = selectedParcela.valorPago || selectedParcela.parcelaComJuros;
+    const valorExtenso = valorPorExtenso(valorRecebido);
+    const parcelasRestantes = imovelInfo.totalParcelas - selectedParcela.parcela;
 
-  const receiptHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Recibo - Parcela ${selectedParcela.parcela}</title>
-      <style>
-        body { 
-          font-family: Arial, sans-serif; 
-          max-width: 700px; 
-          margin: 0 auto; 
-          padding: 20px 30px;
-          line-height: 1.4;
-          font-size: 13px;
-          color: #000;
-        }
-        .title { 
-          text-align: center;
-          font-size: 22px; 
-          font-weight: bold;
-          margin-bottom: 25px;
-          letter-spacing: 1px;
-        }
-        .content {
-          text-align: justify;
-          margin-bottom: 12px;
-        }
-        .signature-section {
-          margin-top: 35px;
-          text-align: center;
-        }
-        .signature-line {
-          border-top: 1px solid #000;
-          width: 180px;
-          margin: 0 auto 8px auto;
-        }
-        .date-location {
-          text-align: center;
-          margin: 25px 0 35px 0;
-        }
-        @media print {
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Recibo - Parcela ${selectedParcela.parcela}</title>
+        <style>
           body { 
-            padding: 15px 25px;
-            font-size: 12px;
+            font-family: Arial, sans-serif; 
+            max-width: 700px; 
+            margin: 0 auto; 
+            padding: 20px 30px;
+            line-height: 1.4;
+            font-size: 13px;
+            color: #000;
           }
-          .title {
-            font-size: 20px;
-            margin-bottom: 20px;
+          .title { 
+            text-align: center;
+            font-size: 22px; 
+            font-weight: bold;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
           }
           .content {
-            margin-bottom: 10px;
-            line-height: 1.3;
+            text-align: justify;
+            margin-bottom: 12px;
           }
-          .date-location {
-            margin: 20px 0 30px 0;
+          .valor-pago-section {
+            background: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+          }
+          .valor-pago-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 8px;
+          }
+          .valor-pago-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
           }
           .signature-section {
-            margin-top: 25px;
+            margin-top: 35px;
+            text-align: center;
           }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="title">RECIBO</div>
-      
-      <div class="content">
-        Pelo presente, eu <strong>${imovelInfo.recebedor.nome}</strong>, inscrito no CPF sob nº <strong>${imovelInfo.recebedor.cpf}</strong>, declaro que <strong>RECEBI</strong> na data de hoje, o valor de <strong>${formatCurrency(valorTotal)}</strong>, ${valorExtenso}, por meio de PIX, de <strong>${imovelInfo.pagador.nome}</strong>, inscrito no CPF sob nº <strong>${imovelInfo.pagador.cpf}</strong>, referente à parcela <strong>${selectedParcela.parcela} de ${imovelInfo.totalParcelas}</strong> referente ao imóvel denominado <strong>${imovelInfo.imovel}</strong> do <strong>${imovelInfo.bloco}</strong>, localizado no <strong>${imovelInfo.andar}</strong> do <strong>${imovelInfo.condominio}</strong>.
-      </div>
-      
-      <div class="content">
-        Declaro que ainda restam pendentes <strong>${parcelasRestantes} parcelas</strong>.
-      </div>
-      
-      <div class="content">
-        Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.
-      </div>
-      
-      <div class="date-location">
-        Guarujá, ${hoje}.
-      </div>
-      
-      <div class="signature-section">
-        <div class="signature-line"></div>
-        <div>${imovelInfo.recebedor.nome}</div>
-      </div>
+          .signature-line {
+            border-top: 1px solid #000;
+            width: 180px;
+            margin: 0 auto 8px auto;
+          }
+          .date-location {
+            text-align: center;
+            margin: 25px 0 35px 0;
+          }
+          @media print {
+            body { 
+              padding: 15px 25px;
+              font-size: 12px;
+            }
+            .title {
+              font-size: 20px;
+              margin-bottom: 20px;
+            }
+            .content {
+              margin-bottom: 10px;
+              line-height: 1.3;
+            }
+            .date-location {
+              margin: 20px 0 30px 0;
+            }
+            .signature-section {
+              margin-top: 25px;
+            }
+            .valor-pago-section {
+              margin: 15px 0;
+              padding: 12px;
+            }
+            .valor-pago-title {
+              font-size: 14px;
+            }
+            .valor-pago-value {
+              font-size: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="title">RECIBO</div>
+        
+        <div class="content">
+          Pelo presente, eu <strong>${imovelInfo.recebedor.nome}</strong>, inscrito no CPF sob nº <strong>${imovelInfo.recebedor.cpf}</strong>, declaro que <strong>RECEBI</strong> na data de hoje, o valor de <strong>${formatCurrency(valorRecebido)}</strong>, ${valorExtenso}, por meio de PIX, de <strong>${imovelInfo.pagador.nome}</strong>, inscrito no CPF sob nº <strong>${imovelInfo.pagador.cpf}</strong>, referente à parcela <strong>${selectedParcela.parcela} de ${imovelInfo.totalParcelas}</strong> referente ao imóvel denominado <strong>${imovelInfo.imovel}</strong> do <strong>${imovelInfo.bloco}</strong>, localizado no <strong>${imovelInfo.andar}</strong> do <strong>${imovelInfo.condominio}</strong>.
+        </div>
 
-      <script>
-        window.onload = function() {
-          window.print();
-        }
-      </script>
-    </body>
-    </html>
-  `;
+        ${selectedParcela.valorPago ? `
+        <div class="valor-pago-section">
+          <div class="valor-pago-title">VALOR PAGO</div>
+          <div class="valor-pago-value">${formatCurrency(selectedParcela.valorPago)}</div>
+        </div>
+        ` : ''}
+        
+        <div class="content">
+          Declaro que ainda restam pendentes <strong>${parcelasRestantes} parcelas</strong>.
+        </div>
+        
+        <div class="content">
+          Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.
+        </div>
+        
+        <div class="date-location">
+          Guarujá, ${hoje}.
+        </div>
+        
+        <div class="signature-section">
+          <div class="signature-line"></div>
+          <div>${imovelInfo.recebedor.nome}</div>
+        </div>
 
-  receiptWindow.document.write(receiptHTML);
-  receiptWindow.document.close();
-};
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `;
 
-// ============================================
-// 📄 PDF TAMBÉM COMPACTO PARA A4
-// ============================================
-const downloadReceiptPDF = async () => {
-  if (!selectedParcela) return;
-
-  try {
-    const jsPDF = require('jspdf').jsPDF;
-    const doc = new jsPDF();
-    
-    const imovelInfo = imoveisInfo[activeTab];
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    
-    // Função para converter valor em extenso (simplificada)
-    const valorPorExtenso = (valor: number): string => {
-      const milhares = Math.floor(valor / 1000);
-      const centavos = Math.round((valor - Math.floor(valor)) * 100);
-      
-      if (valor >= 1000) {
-        return `${milhares} mil ${Math.floor(valor % 1000) > 0 ? 'e ' + Math.floor(valor % 1000) + ' ' : ''}reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
-      }
-      return `${Math.floor(valor)} reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
-    };
-    
-    // Configurações da página - MAIS COMPACTO
-    const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
-    const marginLeft = 25;
-    const marginRight = 25;
-    const contentWidth = pageWidth - marginLeft - marginRight;
-    let currentY = 40; // Começar mais próximo do topo
-    
-    // TÍTULO - RECIBO
-    doc.setFontSize(18); // Menor
-    doc.setFont('helvetica', 'bold');
-    const title = 'RECIBO';
-    const titleWidth = doc.getTextWidth(title);
-    doc.text(title, (pageWidth - titleWidth) / 2, currentY);
-    currentY += 25; // Espaço menor
-    
-    // Texto do recibo
-    doc.setFontSize(11); // Fonte menor
-    doc.setFont('helvetica', 'normal');
-    
-    // Quebrar o texto em linhas
-    const valorTotal = selectedParcela.valorPago || selectedParcela.parcelaComJuros;
-    const valorExtenso = valorPorExtenso(valorTotal);
-    
-    // Calcular parcelas restantes
-    const parcelasRestantes = imovelInfo.totalParcelas - selectedParcela.parcela;
-    
-    const texto = `Pelo presente, eu ${imovelInfo.recebedor.nome}, inscrito no CPF sob nº ${imovelInfo.recebedor.cpf}, declaro que RECEBI na data de hoje, o valor de ${formatCurrency(valorTotal)}, ${valorExtenso}, por meio de PIX, de ${imovelInfo.pagador.nome}, inscrito no CPF sob nº ${imovelInfo.pagador.cpf}, referente à parcela ${selectedParcela.parcela} de ${imovelInfo.totalParcelas} referente ao imóvel denominado ${imovelInfo.imovel} do ${imovelInfo.bloco}, localizado no ${imovelInfo.andar} do ${imovelInfo.condominio}.`;
-    
-    // Quebrar texto em linhas de acordo com a largura
-    const linhas = doc.splitTextToSize(texto, contentWidth);
-    
-    // Imprimir o texto principal com espaçamento menor
-    linhas.forEach((linha: string) => {
-      doc.text(linha, marginLeft, currentY);
-      currentY += 6; // Espaçamento menor entre linhas
-    });
-    
-    currentY += 10; // Espaço menor
-    
-    // Declaração de parcelas restantes
-    const textoRestantes = `Declaro que ainda restam pendentes ${parcelasRestantes} parcelas.`;
-    doc.text(textoRestantes, marginLeft, currentY);
-    currentY += 15; // Espaço menor
-    
-    // Expressão de verdade
-    const textoVerdade = `Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.`;
-    doc.text(textoVerdade, marginLeft, currentY);
-    currentY += 25; // Espaço menor
-    
-    // Data e local
-    const dataLocal = `Guarujá, ${hoje}.`;
-    const dataLocalWidth = doc.getTextWidth(dataLocal);
-    doc.text(dataLocal, (pageWidth - dataLocalWidth) / 2, currentY);
-    currentY += 35; // Espaço menor
-    
-    // Assinatura
-    doc.setFont('helvetica', 'normal');
-    const nomeRecebedor = imovelInfo.recebedor.nome;
-    const nomeWidth = doc.getTextWidth(nomeRecebedor);
-    
-    // Linha para assinatura - menor
-    const linhaAssinatura = 80;
-    const startX = (pageWidth - linhaAssinatura) / 2;
-    doc.line(startX, currentY, startX + linhaAssinatura, currentY);
-    
-    // Nome do recebedor abaixo da linha
-    doc.text(nomeRecebedor, (pageWidth - nomeWidth) / 2, currentY + 8);
-    
-    // Salvar o PDF
-    const fileName = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
-    doc.save(fileName);
-    
-  } catch (error) {
-    console.error('Erro ao gerar PDF:', error);
-    alert('Erro ao gerar PDF. Instale jsPDF: npm install jspdf');
-  }
-};
-
-// ============================================
-// 📄 PDF TAMBÉM COMPACTO PARA A4
-// ============================================
-const downloadReceiptPDF = async () => {
-  if (!selectedParcela) return;
-
-  try {
-    const jsPDF = require('jspdf').jsPDF;
-    const doc = new jsPDF();
-    
-    const imovelInfo = imoveisInfo[activeTab];
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    
-    // Função para converter valor em extenso (simplificada)
-    const valorPorExtenso = (valor: number): string => {
-      const milhares = Math.floor(valor / 1000);
-      const centavos = Math.round((valor - Math.floor(valor)) * 100);
-      
-      if (valor >= 1000) {
-        return `${milhares} mil ${Math.floor(valor % 1000) > 0 ? 'e ' + Math.floor(valor % 1000) + ' ' : ''}reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
-      }
-      return `${Math.floor(valor)} reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
-    };
-    
-    // Configurações da página - MAIS COMPACTO
-    const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
-    const marginLeft = 25;
-    const marginRight = 25;
-    const contentWidth = pageWidth - marginLeft - marginRight;
-    let currentY = 40; // Começar mais próximo do topo
-    
-    // TÍTULO - RECIBO
-    doc.setFontSize(18); // Menor
-    doc.setFont('helvetica', 'bold');
-    const title = 'RECIBO';
-    const titleWidth = doc.getTextWidth(title);
-    doc.text(title, (pageWidth - titleWidth) / 2, currentY);
-    currentY += 25; // Espaço menor
-    
-    // Texto do recibo
-    doc.setFontSize(11); // Fonte menor
-    doc.setFont('helvetica', 'normal');
-    
-    // Quebrar o texto em linhas
-    const valorTotal = selectedParcela.valorPago || selectedParcela.parcelaComJuros;
-    const valorExtenso = valorPorExtenso(valorTotal);
-    
-    // Calcular parcelas restantes
-    const parcelasRestantes = imovelInfo.totalParcelas - selectedParcela.parcela;
-    
-    const texto = `Pelo presente, eu ${imovelInfo.recebedor.nome}, inscrito no CPF sob nº ${imovelInfo.recebedor.cpf}, declaro que RECEBI na data de hoje, o valor de ${formatCurrency(valorTotal)}, ${valorExtenso}, por meio de PIX, de ${imovelInfo.pagador.nome}, inscrito no CPF sob nº ${imovelInfo.pagador.cpf}, referente à parcela ${selectedParcela.parcela} de ${imovelInfo.totalParcelas} referente ao imóvel denominado ${imovelInfo.imovel} do ${imovelInfo.bloco}, localizado no ${imovelInfo.andar} do ${imovelInfo.condominio}.`;
-    
-    // Quebrar texto em linhas de acordo com a largura
-    const linhas = doc.splitTextToSize(texto, contentWidth);
-    
-    // Imprimir o texto principal com espaçamento menor
-    linhas.forEach((linha: string) => {
-      doc.text(linha, marginLeft, currentY);
-      currentY += 6; // Espaçamento menor entre linhas
-    });
-    
-    currentY += 10; // Espaço menor
-    
-    // Declaração de parcelas restantes
-    const textoRestantes = `Declaro que ainda restam pendentes ${parcelasRestantes} parcelas.`;
-    doc.text(textoRestantes, marginLeft, currentY);
-    currentY += 15; // Espaço menor
-    
-    // Expressão de verdade
-    const textoVerdade = `Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.`;
-    doc.text(textoVerdade, marginLeft, currentY);
-    currentY += 25; // Espaço menor
-    
-    // Data e local
-    const dataLocal = `Guarujá, ${hoje}.`;
-    const dataLocalWidth = doc.getTextWidth(dataLocal);
-    doc.text(dataLocal, (pageWidth - dataLocalWidth) / 2, currentY);
-    currentY += 35; // Espaço menor
-    
-    // Assinatura
-    doc.setFont('helvetica', 'normal');
-    const nomeRecebedor = imovelInfo.recebedor.nome;
-    const nomeWidth = doc.getTextWidth(nomeRecebedor);
-    
-    // Linha para assinatura - menor
-    const linhaAssinatura = 80;
-    const startX = (pageWidth - linhaAssinatura) / 2;
-    doc.line(startX, currentY, startX + linhaAssinatura, currentY);
-    
-    // Nome do recebedor abaixo da linha
-    doc.text(nomeRecebedor, (pageWidth - nomeWidth) / 2, currentY + 8);
-    
-    // Salvar o PDF
-    const fileName = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
-    doc.save(fileName);
-    
-  } catch (error) {
-    console.error('Erro ao gerar PDF:', error);
-    alert('Erro ao gerar PDF. Instale jsPDF: npm install jspdf');
-  }
+    receiptWindow.document.write(receiptHTML);
+    receiptWindow.document.close();
+  };
 
   // ============================================
-  // 📄 GERAR PDF REAL - USANDO jsPDF
+  // 📄 DOWNLOAD PDF
   // ============================================
   const downloadReceiptPDF = async () => {
     if (!selectedParcela) return;
 
     try {
-      // Simulação de jsPDF - em produção, descomente as linhas abaixo
-      // Para usar, instale: npm install jspdf
-      
-      /*
-      const { jsPDF } = require('jspdf');
+      const jsPDF = require('jspdf').jsPDF;
       const doc = new jsPDF();
       
       const imovelInfo = imoveisInfo[activeTab];
       const hoje = new Date().toLocaleDateString('pt-BR');
       
-      // Configurações
-      const pageWidth = doc.internal.pageSize.width;
-      const marginLeft = 20;
-      const marginRight = 20;
-      const contentWidth = pageWidth - marginLeft - marginRight;
-      let currentY = 20;
-      
-      // Título principal
-      doc.setFontSize(20);
-      doc.setFont('helvetica', 'bold');
-      const title = 'RECIBO DE PAGAMENTO';
-      const titleWidth = doc.getTextWidth(title);
-      doc.text(title, (pageWidth - titleWidth) / 2, currentY);
-      currentY += 15;
-      
-      // Subtítulo
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'normal');
-      const subtitle = `${imovelInfo.condominio}`;
-      const subtitleWidth = doc.getTextWidth(subtitle);
-      doc.text(subtitle, (pageWidth - subtitleWidth) / 2, currentY);
-      currentY += 10;
-      
-      const subtitle2 = `${imovelInfo.imovel} - ${imovelInfo.bloco}`;
-      const subtitle2Width = doc.getTextWidth(subtitle2);
-      doc.text(subtitle2, (pageWidth - subtitle2Width) / 2, currentY);
-      currentY += 25;
-      
-      // Linha separadora
-      doc.setLineWidth(0.5);
-      doc.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-      currentY += 15;
-      
-      // Função para adicionar seção
-      const addSection = (title: string, items: Array<{label: string, value: string}>) => {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title, marginLeft, currentY);
-        currentY += 10;
+      const valorPorExtenso = (valor: number): string => {
+        const milhares = Math.floor(valor / 1000);
+        const centavos = Math.round((valor - Math.floor(valor)) * 100);
         
-        doc.setFont('helvetica', 'normal');
-        items.forEach(item => {
-          doc.text(`${item.label}:`, marginLeft + 5, currentY);
-          doc.text(item.value, marginLeft + 80, currentY);
-          currentY += 7;
-        });
-        currentY += 5;
+        if (valor >= 1000) {
+          return `${milhares} mil ${Math.floor(valor % 1000) > 0 ? 'e ' + Math.floor(valor % 1000) + ' ' : ''}reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
+        }
+        return `${Math.floor(valor)} reais${centavos > 0 ? ' e ' + centavos + ' centavos' : ''}`;
       };
       
-      // Seção 1: Informações do Imóvel
-      addSection('INFORMAÇÕES DO IMÓVEL', [
-        { label: 'Condomínio', value: imovelInfo.condominio },
-        { label: 'Apartamento', value: imovelInfo.imovel },
-        { label: 'Bloco', value: imovelInfo.bloco }
-      ]);
-      
-      // Seção 2: Dados do Pagamento
-      addSection('DADOS DO PAGAMENTO', [
-        { label: 'Recebedor', value: imovelInfo.recebedor.nome },
-        { label: 'CPF Recebedor', value: imovelInfo.recebedor.cpf },
-        { label: 'Pagador', value: imovelInfo.pagador.nome },
-        { label: 'CPF Pagador', value: imovelInfo.pagador.cpf }
-      ]);
-      
-      // Seção 3: Detalhes da Parcela
-      addSection('DETALHES DA PARCELA', [
-        { label: 'Parcela', value: `${selectedParcela.parcela} de ${imovelInfo.totalParcelas}` },
-        { label: 'Data Vencimento', value: formatDate(selectedParcela.dataVencimento) },
-        { label: 'Data Envio Boleto', value: formatDate(selectedParcela.dataEnvioBoleto) },
-        { label: 'Situação', value: selectedParcela.situacao }
-      ]);
-      
-      // Seção 4: Valores
-      addSection('VALORES', [
-        { label: 'Parcela sem Juros', value: formatCurrency(selectedParcela.parcelaSemJuros) },
-        { label: 'Juros Poupança', value: formatPercentage(selectedParcela.jurosPoupanca) },
-        { label: 'Juros Total', value: formatPercentage(selectedParcela.jurosTotal) },
-        { label: 'Valor dos Juros', value: formatCurrency(selectedParcela.jurosValor) }
-      ]);
-      
-      // Valor Total em destaque
-      currentY += 10;
-      doc.setFillColor(232, 245, 232);
-      doc.rect(marginLeft, currentY - 5, contentWidth, 20, 'F');
-      doc.setDrawColor(40, 167, 69);
-      doc.setLineWidth(1);
-      doc.rect(marginLeft, currentY - 5, contentWidth, 20);
-      
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 167, 69);
-      const totalText = 'VALOR TOTAL DA PARCELA';
-      const totalTextWidth = doc.getTextWidth(totalText);
-      doc.text(totalText, (pageWidth - totalTextWidth) / 2, currentY + 5);
+      const pageWidth = doc.internal.pageSize.width;
+      const marginLeft = 25;
+      const marginRight = 25;
+      const contentWidth = pageWidth - marginLeft - marginRight;
+      let currentY = 40;
       
       doc.setFontSize(18);
-      const totalValue = formatCurrency(selectedParcela.parcelaComJuros);
-      const totalValueWidth = doc.getTextWidth(totalValue);
-      doc.text(totalValue, (pageWidth - totalValueWidth) / 2, currentY + 12);
-      currentY += 30;
+      doc.setFont('helvetica', 'bold');
+      const title = 'RECIBO';
+      const titleWidth = doc.getTextWidth(title);
+      doc.text(title, (pageWidth - titleWidth) / 2, currentY);
+      currentY += 25;
       
-      // Valor Pago (se houver)
-      if (selectedParcela.valorPago) {
-        doc.setFillColor(232, 245, 232);
-        doc.rect(marginLeft, currentY - 5, contentWidth, 15, 'F');
-        doc.setDrawColor(40, 167, 69);
-        doc.rect(marginLeft, currentY - 5, contentWidth, 15);
-        
-        doc.setFontSize(12);
-        const paidText = `VALOR PAGO: ${formatCurrency(selectedParcela.valorPago)}`;
-        const paidTextWidth = doc.getTextWidth(paidText);
-        doc.text(paidText, (pageWidth - paidTextWidth) / 2, currentY + 5);
-        currentY += 25;
-      }
-      
-      // Assinaturas
-      currentY += 20;
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       
-      // Linha para assinatura do recebedor
-      doc.line(marginLeft + 20, currentY, marginLeft + 80, currentY);
-      doc.text('Recebedor', marginLeft + 35, currentY + 7);
-      doc.text(imovelInfo.recebedor.nome, marginLeft + 20, currentY + 14);
+      const valorRecebido = selectedParcela.valorPago || selectedParcela.parcelaComJuros;
+      const valorExtenso = valorPorExtenso(valorRecebido);
+      const parcelasRestantes = imovelInfo.totalParcelas - selectedParcela.parcela;
       
-      // Linha para assinatura do pagador
-      doc.line(pageWidth - marginRight - 80, currentY, pageWidth - marginRight - 20, currentY);
-      doc.text('Pagador', pageWidth - marginRight - 65, currentY + 7);
-      doc.text(imovelInfo.pagador.nome, pageWidth - marginRight - 80, currentY + 14);
+      const texto = `Pelo presente, eu ${imovelInfo.recebedor.nome}, inscrito no CPF sob nº ${imovelInfo.recebedor.cpf}, declaro que RECEBI na data de hoje, o valor de ${formatCurrency(valorRecebido)}, ${valorExtenso}, por meio de PIX, de ${imovelInfo.pagador.nome}, inscrito no CPF sob nº ${imovelInfo.pagador.cpf}, referente à parcela ${selectedParcela.parcela} de ${imovelInfo.totalParcelas} referente ao imóvel denominado ${imovelInfo.imovel} do ${imovelInfo.bloco}, localizado no ${imovelInfo.andar} do ${imovelInfo.condominio}.`;
       
-      // Rodapé
-      currentY = doc.internal.pageSize.height - 30;
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      const footerText1 = 'Recibo gerado automaticamente pelo Sistema JN Finanças';
-      const footerText1Width = doc.getTextWidth(footerText1);
-      doc.text(footerText1, (pageWidth - footerText1Width) / 2, currentY);
+      const linhas = doc.splitTextToSize(texto, contentWidth);
       
-      const footerText2 = `Data de emissão: ${hoje}`;
-      const footerText2Width = doc.getTextWidth(footerText2);
-      doc.text(footerText2, (pageWidth - footerText2Width) / 2, currentY + 7);
+      linhas.forEach((linha: string) => {
+        doc.text(linha, marginLeft, currentY);
+        currentY += 6;
+      });
       
-      const footerText3 = 'Este documento possui validade legal para comprovação de pagamento';
-      const footerText3Width = doc.getTextWidth(footerText3);
-      doc.text(footerText3, (pageWidth - footerText3Width) / 2, currentY + 14);
+      currentY += 15;
       
-      // Salvar o PDF
+      if (selectedParcela.valorPago) {
+        doc.setFillColor(232, 245, 232);
+        doc.rect(marginLeft, currentY - 5, contentWidth, 20, 'F');
+        doc.setDrawColor(40, 167, 69);
+        doc.setLineWidth(1);
+        doc.rect(marginLeft, currentY - 5, contentWidth, 20);
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 167, 69);
+        const valorPagoText = 'VALOR PAGO';
+        const valorPagoTextWidth = doc.getTextWidth(valorPagoText);
+        doc.text(valorPagoText, (pageWidth - valorPagoTextWidth) / 2, currentY + 5);
+        
+        doc.setFontSize(16);
+        const valorPagoValue = formatCurrency(selectedParcela.valorPago);
+        const valorPagoValueWidth = doc.getTextWidth(valorPagoValue);
+        doc.text(valorPagoValue, (pageWidth - valorPagoValueWidth) / 2, currentY + 12);
+        currentY += 30;
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+      }
+      
+      const textoRestantes = `Declaro que ainda restam pendentes ${parcelasRestantes} parcelas.`;
+      doc.text(textoRestantes, marginLeft, currentY);
+      currentY += 15;
+      
+      const textoVerdade = `Sendo expressão de verdade e sem qualquer coação, firmo o presente recibo.`;
+      doc.text(textoVerdade, marginLeft, currentY);
+      currentY += 25;
+      
+      const dataLocal = `Guarujá, ${hoje}.`;
+      const dataLocalWidth = doc.getTextWidth(dataLocal);
+      doc.text(dataLocal, (pageWidth - dataLocalWidth) / 2, currentY);
+      currentY += 35;
+      
+      doc.setFont('helvetica', 'normal');
+      const nomeRecebedor = imovelInfo.recebedor.nome;
+      const nomeWidth = doc.getTextWidth(nomeRecebedor);
+      
+      const linhaAssinatura = 80;
+      const startX = (pageWidth - linhaAssinatura) / 2;
+      doc.line(startX, currentY, startX + linhaAssinatura, currentY);
+      
+      doc.text(nomeRecebedor, (pageWidth - nomeWidth) / 2, currentY + 8);
+      
       const fileName = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
       doc.save(fileName);
-      */
-
-      // SIMULAÇÃO para demonstração (remover em produção)
-      const simulatePDF = () => {
-        const imovelInfo = imoveisInfo[activeTab];
-        const hoje = new Date().toLocaleDateString('pt-BR');
-        
-        // Criando um PDF simulado como blob
-        const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-/Font <<
-/F1 5 0 R
->>
->>
->>
-endobj
-
-4 0 obj
-<<
-/Length 500
->>
-stream
-BT
-/F1 16 Tf
-50 750 Td
-(RECIBO DE PAGAMENTO) Tj
-0 -30 Td
-/F1 12 Tf
-(${imovelInfo.condominio}) Tj
-0 -20 Td
-(${imovelInfo.imovel} - ${imovelInfo.bloco}) Tj
-0 -40 Td
-(Parcela: ${selectedParcela.parcela} de ${imovelInfo.totalParcelas}) Tj
-0 -20 Td
-(Vencimento: ${formatDate(selectedParcela.dataVencimento)}) Tj
-0 -20 Td
-(Situacao: ${selectedParcela.situacao}) Tj
-0 -30 Td
-(Valor sem Juros: ${formatCurrency(selectedParcela.parcelaSemJuros)}) Tj
-0 -20 Td
-(Valor dos Juros: ${formatCurrency(selectedParcela.jurosValor)}) Tj
-0 -20 Td
-(VALOR TOTAL: ${formatCurrency(selectedParcela.parcelaComJuros)}) Tj
-${selectedParcela.valorPago ? `0 -30 Td\n(VALOR PAGO: ${formatCurrency(selectedParcela.valorPago)}) Tj` : ''}
-0 -60 Td
-(Recebedor: ${imovelInfo.recebedor.nome}) Tj
-0 -20 Td
-(Pagador: ${imovelInfo.pagador.nome}) Tj
-0 -40 Td
-(Emitido em: ${hoje}) Tj
-ET
-endstream
-endobj
-
-5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
-endobj
-
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000230 00000 n 
-0000000780 00000 n 
-trailer
-<<
-/Size 6
-/Root 1 0 R
->>
-startxref
-850
-%%EOF`;
-
-        const blob = new Blob([pdfContent], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `recibo_parcela_${selectedParcela.parcela}_${activeTab}_${hoje.replace(/\//g, '-')}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      };
-
-      simulatePDF();
       
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
-      alert('Erro ao gerar PDF. Tente novamente.');
+      alert('Erro ao gerar PDF. Instale jsPDF: npm install jspdf');
     }
   };
 
@@ -1217,157 +800,159 @@ startxref
         </div>
       </div>
 
-      {/* Modal do Recibo */}
-      {/* Modal do Recibo - VERSÃO SIMPLIFICADA */}
-{showReceiptModal && selectedParcela && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-900">
-            Recibo - Parcela {selectedParcela.parcela}
-          </h3>
-          <button
-            onClick={() => setShowReceiptModal(false)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X size={24} />
-          </button>
+      {/* Modal do Recibo SIMPLIFICADO */}
+      {showReceiptModal && selectedParcela && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Recibo - Parcela {selectedParcela.parcela}
+                </h3>
+                <button
+                  onClick={() => setShowReceiptModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Preview do Recibo SIMPLIFICADO */}
+              <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-gray-50">
+                <div className="text-center mb-6">
+                  <h4 className="text-lg font-bold">RECIBO DE PAGAMENTO</h4>
+                  <p className="text-gray-600">{imoveisInfo[activeTab].condominio}</p>
+                  <p className="text-gray-600">{imoveisInfo[activeTab].imovel} - {imoveisInfo[activeTab].bloco}</p>
+                </div>
+
+                {/* Seção: Informações do Imóvel */}
+                <div className="mb-4">
+                  <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                    <Home size={16} className="mr-2" />
+                    Informações do Imóvel
+                  </h5>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Condomínio:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].condominio}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Apartamento:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].imovel}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Bloco:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].bloco}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção: Dados do Pagamento */}
+                <div className="mb-4">
+                  <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                    <FileText size={16} className="mr-2" />
+                    Dados do Pagamento
+                  </h5>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Recebedor:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].recebedor.nome}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">CPF:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].recebedor.cpf}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Pagador:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].pagador.nome}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">CPF:</span>
+                      <span className="ml-2">{imoveisInfo[activeTab].pagador.cpf}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção: Detalhes da Parcela */}
+                <div className="mb-4">
+                  <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                    <Calendar size={16} className="mr-2" />
+                    Detalhes da Parcela
+                  </h5>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Parcela:</span>
+                      <span className="ml-2">{selectedParcela.parcela} de {imoveisInfo[activeTab].totalParcelas}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Data Vencimento:</span>
+                      <span className="ml-2">{formatDate(selectedParcela.dataVencimento)}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Data Envio Boleto:</span>
+                      <span className="ml-2">{formatDate(selectedParcela.dataEnvioBoleto)}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Situação:</span>
+                      <span className="ml-2">{selectedParcela.situacao}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* APENAS VALOR PAGO - SE HOUVER */}
+                {selectedParcela.valorPago && (
+                  <div className="mt-6 p-4 bg-green-100 rounded-lg text-center border border-green-300">
+                    <p className="text-green-800 font-semibold text-lg">
+                      VALOR PAGO
+                    </p>
+                    <p className="text-green-800 font-bold text-2xl">
+                      {formatCurrency(selectedParcela.valorPago)}
+                    </p>
+                  </div>
+                )}
+
+                {/* Se não tiver valor pago, mostrar valor da parcela */}
+                {!selectedParcela.valorPago && (
+                  <div className="mt-6 p-4 bg-blue-100 rounded-lg text-center border border-blue-300">
+                    <p className="text-blue-800 font-semibold text-lg">
+                      VALOR DA PARCELA
+                    </p>
+                    <p className="text-blue-800 font-bold text-2xl">
+                      {formatCurrency(selectedParcela.parcelaComJuros)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex space-x-4">
+                <button
+                  onClick={printReceipt}
+                  className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Printer size={16} className="mr-2" />
+                  Imprimir Recibo
+                </button>
+                <button
+                  onClick={downloadReceiptPDF}
+                  className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Download size={16} className="mr-2" />
+                  Baixar PDF
+                </button>
+                <button
+                  onClick={() => setShowReceiptModal(false)}
+                  className="flex items-center justify-center px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Preview do Recibo SIMPLIFICADO */}
-        <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-gray-50">
-          <div className="text-center mb-6">
-            <h4 className="text-lg font-bold">RECIBO DE PAGAMENTO</h4>
-            <p className="text-gray-600">{imoveisInfo[activeTab].condominio}</p>
-            <p className="text-gray-600">{imoveisInfo[activeTab].imovel} - {imoveisInfo[activeTab].bloco}</p>
-          </div>
-
-          {/* Seção: Informações do Imóvel */}
-          <div className="mb-4">
-            <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-              <Home size={16} className="mr-2" />
-              Informações do Imóvel
-            </h5>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="font-medium">Condomínio:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].condominio}</span>
-              </div>
-              <div>
-                <span className="font-medium">Apartamento:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].imovel}</span>
-              </div>
-              <div>
-                <span className="font-medium">Bloco:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].bloco}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Seção: Dados do Pagamento */}
-          <div className="mb-4">
-            <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-              <FileText size={16} className="mr-2" />
-              Dados do Pagamento
-            </h5>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="font-medium">Recebedor:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].recebedor.nome}</span>
-              </div>
-              <div>
-                <span className="font-medium">CPF:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].recebedor.cpf}</span>
-              </div>
-              <div>
-                <span className="font-medium">Pagador:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].pagador.nome}</span>
-              </div>
-              <div>
-                <span className="font-medium">CPF:</span>
-                <span className="ml-2">{imoveisInfo[activeTab].pagador.cpf}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Seção: Detalhes da Parcela */}
-          <div className="mb-4">
-            <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-              <Calendar size={16} className="mr-2" />
-              Detalhes da Parcela
-            </h5>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="font-medium">Parcela:</span>
-                <span className="ml-2">{selectedParcela.parcela} de {imoveisInfo[activeTab].totalParcelas}</span>
-              </div>
-              <div>
-                <span className="font-medium">Data Vencimento:</span>
-                <span className="ml-2">{formatDate(selectedParcela.dataVencimento)}</span>
-              </div>
-              <div>
-                <span className="font-medium">Data Envio Boleto:</span>
-                <span className="ml-2">{formatDate(selectedParcela.dataEnvioBoleto)}</span>
-              </div>
-              <div>
-                <span className="font-medium">Situação:</span>
-                <span className="ml-2">{selectedParcela.situacao}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* APENAS VALOR PAGO - SE HOUVER */}
-          {selectedParcela.valorPago && (
-            <div className="mt-6 p-4 bg-green-100 rounded-lg text-center border border-green-300">
-              <p className="text-green-800 font-semibold text-lg">
-                VALOR PAGO
-              </p>
-              <p className="text-green-800 font-bold text-2xl">
-                {formatCurrency(selectedParcela.valorPago)}
-              </p>
-            </div>
-          )}
-
-          {/* Se não tiver valor pago, mostrar valor da parcela */}
-          {!selectedParcela.valorPago && (
-            <div className="mt-6 p-4 bg-blue-100 rounded-lg text-center border border-blue-300">
-              <p className="text-blue-800 font-semibold text-lg">
-                VALOR DA PARCELA
-              </p>
-              <p className="text-blue-800 font-bold text-2xl">
-                {formatCurrency(selectedParcela.parcelaComJuros)}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Botões de Ação */}
-        <div className="flex space-x-4">
-          <button
-            onClick={printReceipt}
-            className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Printer size={16} className="mr-2" />
-            Imprimir Recibo
-          </button>
-          <button
-            onClick={downloadReceiptPDF}
-            className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Download size={16} className="mr-2" />
-            Baixar PDF
-          </button>
-          <button
-            onClick={() => setShowReceiptModal(false)}
-            className="flex items-center justify-center px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
+      )}
     </div>
-  </div>
-)}
+  );
+};
 
 export default JNFinancasSystem;
