@@ -1218,88 +1218,156 @@ startxref
       </div>
 
       {/* Modal do Recibo */}
-      {showReceiptModal && selectedParcela && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900">
-                  Recibo - Parcela {selectedParcela.parcela}
-                </h3>
-                <button
-                  onClick={() => setShowReceiptModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={24} />
-                </button>
+      {/* Modal do Recibo - VERSÃO SIMPLIFICADA */}
+{showReceiptModal && selectedParcela && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">
+            Recibo - Parcela {selectedParcela.parcela}
+          </h3>
+          <button
+            onClick={() => setShowReceiptModal(false)}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Preview do Recibo SIMPLIFICADO */}
+        <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-gray-50">
+          <div className="text-center mb-6">
+            <h4 className="text-lg font-bold">RECIBO DE PAGAMENTO</h4>
+            <p className="text-gray-600">{imoveisInfo[activeTab].condominio}</p>
+            <p className="text-gray-600">{imoveisInfo[activeTab].imovel} - {imoveisInfo[activeTab].bloco}</p>
+          </div>
+
+          {/* Seção: Informações do Imóvel */}
+          <div className="mb-4">
+            <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+              <Home size={16} className="mr-2" />
+              Informações do Imóvel
+            </h5>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="font-medium">Condomínio:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].condominio}</span>
               </div>
-
-              {/* Preview do Recibo */}
-              <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-gray-50">
-                <div className="text-center mb-4">
-                  <h4 className="text-lg font-bold">RECIBO DE PAGAMENTO</h4>
-                  <p className="text-gray-600">{imoveisInfo[activeTab].condominio}</p>
-                  <p className="text-gray-600">{imoveisInfo[activeTab].imovel}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p><strong>Parcela:</strong> {selectedParcela.parcela}</p>
-                    <p><strong>Vencimento:</strong> {formatDate(selectedParcela.dataVencimento)}</p>
-                    <p><strong>Situação:</strong> {selectedParcela.situacao}</p>
-                  </div>
-                  <div>
-                    <p><strong>Valor sem Juros:</strong> {formatCurrency(selectedParcela.parcelaSemJuros)}</p>
-                    <p><strong>Valor dos Juros:</strong> {formatCurrency(selectedParcela.jurosValor)}</p>
-                    <p><strong>Total:</strong> {formatCurrency(selectedParcela.parcelaComJuros)}</p>
-                  </div>
-                </div>
-
-                {selectedParcela.valorPago && (
-                  <div className="mt-4 p-3 bg-green-100 rounded-lg text-center">
-                    <p className="text-green-800 font-semibold">
-                      Valor Pago: {formatCurrency(selectedParcela.valorPago)}
-                    </p>
-                  </div>
-                )}
+              <div>
+                <span className="font-medium">Apartamento:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].imovel}</span>
               </div>
-
-              {/* Botões de Ação */}
-              <div className="flex space-x-4">
-                <button
-                  onClick={printReceipt}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Printer size={16} className="mr-2" />
-                  Imprimir Recibo
-                </button>
-                <button
-                  onClick={downloadReceiptPDF}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Download size={16} className="mr-2" />
-                  Baixar PDF
-                </button>
-                <button
-                  onClick={() => setShowReceiptModal(false)}
-                  className="flex items-center justify-center px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-
-              {/* Instruções para PDF */}
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>📄 Para PDF real:</strong> Instale jsPDF com: <code className="bg-blue-200 px-1 rounded">npm install jspdf</code> e descomente o código da função downloadReceiptPDF
-                </p>
+              <div>
+                <span className="font-medium">Bloco:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].bloco}</span>
               </div>
             </div>
           </div>
+
+          {/* Seção: Dados do Pagamento */}
+          <div className="mb-4">
+            <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+              <FileText size={16} className="mr-2" />
+              Dados do Pagamento
+            </h5>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="font-medium">Recebedor:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].recebedor.nome}</span>
+              </div>
+              <div>
+                <span className="font-medium">CPF:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].recebedor.cpf}</span>
+              </div>
+              <div>
+                <span className="font-medium">Pagador:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].pagador.nome}</span>
+              </div>
+              <div>
+                <span className="font-medium">CPF:</span>
+                <span className="ml-2">{imoveisInfo[activeTab].pagador.cpf}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção: Detalhes da Parcela */}
+          <div className="mb-4">
+            <h5 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+              <Calendar size={16} className="mr-2" />
+              Detalhes da Parcela
+            </h5>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="font-medium">Parcela:</span>
+                <span className="ml-2">{selectedParcela.parcela} de {imoveisInfo[activeTab].totalParcelas}</span>
+              </div>
+              <div>
+                <span className="font-medium">Data Vencimento:</span>
+                <span className="ml-2">{formatDate(selectedParcela.dataVencimento)}</span>
+              </div>
+              <div>
+                <span className="font-medium">Data Envio Boleto:</span>
+                <span className="ml-2">{formatDate(selectedParcela.dataEnvioBoleto)}</span>
+              </div>
+              <div>
+                <span className="font-medium">Situação:</span>
+                <span className="ml-2">{selectedParcela.situacao}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* APENAS VALOR PAGO - SE HOUVER */}
+          {selectedParcela.valorPago && (
+            <div className="mt-6 p-4 bg-green-100 rounded-lg text-center border border-green-300">
+              <p className="text-green-800 font-semibold text-lg">
+                VALOR PAGO
+              </p>
+              <p className="text-green-800 font-bold text-2xl">
+                {formatCurrency(selectedParcela.valorPago)}
+              </p>
+            </div>
+          )}
+
+          {/* Se não tiver valor pago, mostrar valor da parcela */}
+          {!selectedParcela.valorPago && (
+            <div className="mt-6 p-4 bg-blue-100 rounded-lg text-center border border-blue-300">
+              <p className="text-blue-800 font-semibold text-lg">
+                VALOR DA PARCELA
+              </p>
+              <p className="text-blue-800 font-bold text-2xl">
+                {formatCurrency(selectedParcela.parcelaComJuros)}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Botões de Ação */}
+        <div className="flex space-x-4">
+          <button
+            onClick={printReceipt}
+            className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Printer size={16} className="mr-2" />
+            Imprimir Recibo
+          </button>
+          <button
+            onClick={downloadReceiptPDF}
+            className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Download size={16} className="mr-2" />
+            Baixar PDF
+          </button>
+          <button
+            onClick={() => setShowReceiptModal(false)}
+            className="flex items-center justify-center px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
-  );
-};
+  </div>
+)}
 
 export default JNFinancasSystem;
